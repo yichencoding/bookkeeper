@@ -103,18 +103,18 @@ pre{white-space:pre-wrap;word-break:break-all;background:#f8fafc;padding:12px;bo
     <label>Apps Script Web App 网址</label><input id="sUrl" placeholder="https://script.google.com/macros/s/.../exec">
     <label>同步密钥（和脚本里 SYNC_SECRET 填一样的）</label><input id="sSecret" placeholder="自己定一个，如 jia-ting-2026">
     <div class="row" style="margin-top:12px"><button id="btnSaveSync">保存设置</button><button class="ghost" id="btnPull">从 Sheet 拉取</button><button class="ghost" id="btnPush">推送手动到 Sheet</button></div>
-    <p class="muted" id="syncMsg">未配置同步。先按下面 3 步部署（旧版 Code.gs 必须换成 v3），再回来填网址。</p>
+    <p class="muted" id="syncMsg">未配置同步。先按下面 3 步部署（旧版 Code.gs 必须换成 v3.2），再回来填网址。</p>
     <p class="muted">上次同步：<span id="lastSync">从未</span></p>
   </div>
   <div class="card">
     <h3 style="margin-top:0">接入指南（3 步，约 10 分钟）</h3>
     <ol class="muted" style="line-height:1.7;padding-left:18px">
       <li>打开你的 Google Sheets《家庭记账》，确认有「所有交易」这个 tab，第 1 行是 9 列标题。</li>
-      <li>在 Sheet 里点 扩展程序 → Apps Script，把下面 Code.gs v3 的全部代码粘贴进去（替换旧版），把 SYNC_SECRET 改成你自己的密钥，点 部署 → 管理部署 → 选已有的 Web 应用 → 新版本 → 部署。网址不变，不用改 App 里的网址。</li>
+      <li>在 Sheet 里点 扩展程序 → Apps Script，把下面 Code.gs v3.2 的全部代码粘贴进去（替换旧版），把 SYNC_SECRET 改成你自己的密钥，点 部署 → 管理部署 → 选已有的 Web 应用 → 新版本 → 部署。网址不变，不用改 App 里的网址。</li>
       <li>把网址和密钥填到上面，点「从 Sheet 拉取」验证一次（应显示 Amex 43 笔、手动 0 笔）。成功后 App 里记一笔，会自动推送到「手动交易」，再打开 Sheet 检查。</li>
     </ol>
     <label>Code.gs（一键复制）</label>
-    <pre id="gasCode">// 家庭记账 · Apps Script 桥接 v3.1（隔离版 + 时区修复：日期用表格时区格式化）
+    <pre id="gasCode">// 家庭记账 · Apps Script 桥接 v3.2（隔离版 + 时区修复）
 // 部署：打开 Google Sheets《家庭记账》→ 扩展程序 → Apps Script → 把本文件
 // 全部粘贴进去（替换掉旧版）→ 把 SYNC_SECRET 改成你自己的密钥
 // → 部署 → 管理部署 → 选已有的 Web 应用部署 → 新版本 → 部署。
@@ -124,6 +124,15 @@ const SHEET_AMEX = &quot;Amex交易&quot;;     // 只读：只有 Muse 的每日
 const SHEET_MANUAL = &quot;手动交易&quot;;   // 只写：App 手动记的只写这里，绝不碰 Amex交易
 const HEADERS = [&quot;日期&quot;,&quot;商家&quot;,&quot;大类&quot;,&quot;细分类&quot;,&quot;金额 (USD)&quot;,&quot;类型&quot;,&quot;来源&quot;,&quot;备注&quot;,&quot;交易ID&quot;];
 
+function fmtSheetDate(d) {
+  if (Object.prototype.toString.call(d) !== &quot;[object Date]&quot;) return String(d).slice(0, 10);
+  try {
+    var tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+    if (typeof tz === &quot;string&quot; &amp;&amp; tz) return Utilities.formatDate(d, tz, &quot;yyyy-MM-dd&quot;);
+  } catch (e) {}
+  return d.getUTCFullYear() + &quot;-&quot; + (&quot;0&quot; + (d.getUTCMonth() + 1)).slice(-2) + &quot;-&quot; + (&quot;0&quot; + d.getUTCDate()).slice(-2);
+}
+
 function readTab(name) {
   const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
   if (!sh) return [];
@@ -132,8 +141,7 @@ function readTab(name) {
   for (let i = 1; i &lt; vals.length; i++) {
     const r = vals[i];
     if (!r[0] &amp;&amp; !r[1]) continue;
-    let d = r[0];
-    if (Object.prototype.toString.call(d) === &quot;[object Date]&quot;) d = Utilities.formatDate(d, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), &quot;yyyy-MM-dd&quot;);
+    let d = fmtSheetDate(r[0]);
     rows.push({date: String(d).slice(0,10), merchant: String(r[1]||&quot;&quot;), category: String(r[2]||&quot;&quot;), subcategory: String(r[3]||&quot;&quot;), amount: Number(r[4]||0), type: String(r[5]||&quot;支出&quot;), source: String(r[6]||&quot;手动&quot;), note: String(r[7]||&quot;&quot;), id: String(r[8]||&quot;&quot;)});
   }
   return rows;
@@ -381,5 +389,6 @@ render();
 (function(){ const s=getSync(); if(s.url) pull(); })();
 
 </script>
+<p class="muted" style="text-align:center;padding:8px 0 24px">家庭记账 · 版本 v3.2</p>
 </body>
 </html>
