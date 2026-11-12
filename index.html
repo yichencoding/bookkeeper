@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>家庭记账</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:#f2f4f7;color:#0f172a;-webkit-font-smoothing:antialiased}
+header{background:#fff;padding:20px 20px 12px;border-bottom:1px solid #e8ecf1}
+header h1{margin:0;font-size:22px;font-weight:800;letter-spacing:.2px} header h1 span{color:#2563eb}
+header p{margin:6px 0 0;font-size:13px;color:#64748b}
+main{max-width:680px;margin:0 auto;padding:16px 14px 110px}
+.card{background:#fff;border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:0 1px 2px rgba(15,23,42,.05),0 8px 24px rgba(15,23,42,.04)}
+.hero{background:linear-gradient(135deg,#1e40af,#2563eb 55%,#3b82f6);color:#fff;border-radius:20px;padding:20px;margin-bottom:14px;box-shadow:0 10px 28px rgba(37,99,235,.28)}
+.hero .lbl{font-size:13px;opacity:.85} .hero .big{font-size:36px;font-weight:800;margin:4px 0 14px;letter-spacing:-.5px}
+.hero-stats{display:flex;gap:10px} .hero-stats div{flex:1;background:rgba(255,255,255,.14);border-radius:12px;padding:10px 12px}
+.hero-stats .k{font-size:12px;opacity:.85} .hero-stats .v{font-size:17px;font-weight:700;margin-top:2px}
+.muted{color:#64748b;font-size:13px} .big{font-size:28px;font-weight:800}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap} .row>*{flex:1;min-width:0}
+input,select,textarea{width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:16px;background:#fff;color:#0f172a;outline:none}
+input:focus,select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.14)}
+button{padding:12px 16px;border:0;border-radius:12px;font-size:16px;font-weight:700;background:#2563eb;color:#fff;cursor:pointer}
+button.ghost{background:#eef2ff;color:#1d4ed8} button.danger{background:#dc2626} button:disabled{opacity:.5}
+label{font-size:13px;color:#475569;display:block;margin:12px 0 6px;font-weight:600}
+h3{margin:0 0 10px;font-size:16px;font-weight:800}
+.tx{display:flex;align-items:center;gap:12px;padding:13px 2px;border-bottom:1px solid #f1f5f9;cursor:pointer}
+.tx:last-child{border-bottom:0}
+.avatar{flex:0 0 40px;width:40px;height:40px;border-radius:12px;background:#eef2ff;color:#1d4ed8;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px}
+.tx-main{flex:1;min-width:0} .tx-name{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.amt{font-weight:800;white-space:nowrap;font-size:15px} .amt.neg{color:#dc2626}
+.tag{display:inline-block;font-size:11px;background:#eef2ff;color:#1d4ed8;border-radius:20px;padding:2px 8px;margin-left:6px;font-weight:700}
+.cat{margin:12px 0} .cat-top{display:flex;align-items:center;gap:8px} .cat-dot{width:10px;height:10px;border-radius:50%;flex:0 0 10px} .cat-name{flex:1;font-weight:600} .cat-amt{font-weight:800}
+.bar{height:8px;background:#f1f5f9;border-radius:99px;overflow:hidden;margin-top:8px} .bar>i{display:block;height:100%;background:#2563eb;border-radius:99px}
+.filters{display:flex;gap:10px;margin-bottom:12px} .filters>*{flex:1}
+.search{position:relative} .search input{padding-left:14px}
+nav{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-top:1px solid #e8ecf1;display:flex;max-width:680px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:transparent;color:#64748b;border-radius:0;padding:15px 0;font-size:15px}
+nav button.on{color:#2563eb}
+.fab{position:fixed;right:18px;bottom:76px;width:56px;height:56px;border-radius:50%;background:#2563eb;color:#fff;font-size:28px;line-height:1;box-shadow:0 8px 20px rgba(37,99,235,.4);display:flex;align-items:center;justify-content:center;padding:0}
+.hidden{display:none}
+pre{white-space:pre-wrap;word-break:break-all;background:#f8fafc;padding:12px;border-radius:12px;font-size:12px;max-height:220px;overflow:auto;border:1px solid #e2e8f0}
+.pill{display:inline-block;background:#eef2ff;color:#1d4ed8;border-radius:99px;padding:4px 10px;font-size:12px;font-weight:700}
+</style>
+</head>
+<body>
+<header><h1>家庭记账 <span>· 11月</span></h1><p>数据在 Google Sheets（家庭记账） · 金额带符号：支出正、退款负</p></header>
+<main>
+<section id="view-list">
+  <div class="hero">
+    <div class="lbl">本月净支出 · <span id="count">0</span> 笔</div>
+    <div class="big" id="net">$0.00</div>
+    <div class="hero-stats">
+      <div><div class="k">支出合计</div><div class="v" id="spent">$0.00</div></div>
+      <div><div class="k">退款</div><div class="v" id="refunds">$0.00</div></div>
+      <div><div class="k">本月</div><div class="v">2026-11</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="filters">
+      <div><label style="margin-top:0">月份</label><input type="month" id="month" value="2026-11"></div>
+      <div><label style="margin-top:0">来源</label><select id="srcFilter"><option value="">全部</option><option>Amex同步</option><option>手动</option></select></div>
+    </div>
+    <div class="search"><input id="q" placeholder="搜商家，如 T&amp;T、Banfield"></div>
+  </div>
+  <div class="card"><h3>按大类</h3><div id="cats"></div></div>
+  <div class="card">
+    <div class="row"><h3 style="margin:0;flex:1">交易明细</h3><span class="pill">点一笔可改可删</span></div>
+    <div id="list"></div>
+  </div>
+  <div class="card">
+    <h3>导入 / 导出</h3>
+    <p class="muted">格式就是模板的 9 列：日期 / 商家 / 大类 / 细分类 / 金额 / 类型 / 来源 / 备注 / 交易ID。重复按交易ID跳过。</p>
+    <div class="row"><button id="btnExportXlsx">导出 .xlsx</button><button class="ghost" id="btnExportCsv">导出 .csv</button></div>
+    <div style="margin-top:8px"><label>导入文件（.xlsx 或 .csv）</label><input type="file" id="fileImport" accept=".xlsx,.xls,.csv"></div>
+    <p class="muted" id="importMsg"></p>
+  </div>
+</section>
+
+<section id="view-form" class="hidden">
+  <div class="card">
+    <h3 id="formTitle" style="margin-top:0">记一笔</h3>
+    <input type="hidden" id="fId">
+    <label>日期</label><input type="date" id="fDate">
+    <label>商家</label><input id="fMerchant" placeholder="如 T&amp;T Supermarket">
+    <label>大类</label><select id="fCat"></select>
+    <label>细分类</label><select id="fSub"></select>
+    <label>金额（USD，支出填正数，退款填负数）</label><input type="number" step="0.01" id="fAmount" placeholder="如 25.50，退款填 -20.00">
+    <label>类型</label><select id="fType"><option>支出</option><option>退款/冲抵</option><option>收入</option><option>转账</option></select>
+    <label>来源</label><select id="fSource"><option>手动</option><option>Amex同步</option></select>
+    <label>备注</label><input id="fNote" placeholder="选填，如 Milly 看病">
+    <div class="row" style="margin-top:16px"><button id="btnSave">保存</button><button class="ghost" id="btnCancel">取消</button></div>
+    <div style="margin-top:10px"><button class="danger hidden" id="btnDelete">删除这笔</button></div>
+    <p class="muted" id="formMsg"></p>
+  </div>
+</section>
+
+<section id="view-sync" class="hidden">
+  <div class="card">
+    <h3 style="margin-top:0">同步设置 · Google Sheets</h3>
+    <p class="muted">不用登录 Muse。这个 App 直接连你自己部署的 Apps Script，再由脚本读写你的 Google Sheets。密钥只存在你这台设备上，不会发给别人。</p>
+    <label>Apps Script Web App 网址</label><input id="sUrl" placeholder="https://script.google.com/macros/s/.../exec">
+    <label>同步密钥（和脚本里 SYNC_SECRET 填一样的）</label><input id="sSecret" placeholder="自己定一个，如 jia-ting-2026">
+    <div class="row" style="margin-top:12px"><button id="btnSaveSync">保存设置</button><button class="ghost" id="btnPull">从 Sheet 拉取</button><button class="ghost" id="btnPush">推送到 Sheet</button></div>
+    <p class="muted" id="syncMsg">未配置同步。先按下面 3 步部署，再回来填网址。</p>
+    <p class="muted">上次同步：<span id="lastSync">从未</span></p>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">接入指南（3 步，约 10 分钟）</h3>
+    <ol class="muted" style="line-height:1.7;padding-left:18px">
+      <li>打开你的 Google Sheets《家庭记账》，确认有「所有交易」这个 tab，第 1 行是 9 列标题。</li>
+      <li>在 Sheet 里点 扩展程序 → Apps Script，把下面 Code.gs 的全部代码粘贴进去，把 SYNC_SECRET 改成你自己的密钥，点 部署 → 新建部署 → 类型选 Web 应用 → 访问权限选「任何人」→ 部署，复制网址。</li>
+      <li>把网址和密钥填到上面，点「从 Sheet 拉取」验证一次。成功后 App 里记一笔，点「推送到 Sheet」，再打开 Sheet 检查。</li>
+    </ol>
+    <label>Code.gs（一键复制）</label>
+    <pre id="gasCode">// 家庭记账 · Apps Script 桥接
+// 部署：扩展程序 → Apps Script → 粘贴本文件 → 把 SYNC_SECRET 改成你自己的密钥
+// → 部署 → 新建部署 → 类型 Web 应用 → 访问权限“任何人” → 部署，复制网址填回 App。
+const SYNC_SECRET = &quot;jia-ting-2026&quot;;
+const SHEET_NAME = &quot;所有交易&quot;;
+const HEADERS = [&quot;日期&quot;,&quot;商家&quot;,&quot;大类&quot;,&quot;细分类&quot;,&quot;金额 (USD)&quot;,&quot;类型&quot;,&quot;来源&quot;,&quot;备注&quot;,&quot;交易ID&quot;];
+
+function doGet(e) {
+  try {
+    if ((e.parameter.secret || &quot;&quot;) !== SYNC_SECRET) return json({ok:false, error:&quot;密钥不对&quot;});
+    if (e.parameter.action !== &quot;pull&quot;) return json({ok:false, error:&quot;未知 action&quot;});
+    const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    const vals = sh.getDataRange().getValues();
+    const rows = [];
+    for (let i = 1; i &lt; vals.length; i++) {
+      const r = vals[i];
+      if (!r[0] &amp;&amp; !r[1]) continue;
+      let d = r[0];
+      if (Object.prototype.toString.call(d) === &quot;[object Date]&quot;) d = Utilities.formatDate(d, Session.getScriptTimeZone(), &quot;yyyy-MM-dd&quot;);
+      rows.push({date: String(d).slice(0,10), merchant: String(r[1]||&quot;&quot;), category: String(r[2]||&quot;&quot;), subcategory: String(r[3]||&quot;&quot;), amount: Number(r[4]||0), type: String(r[5]||&quot;支出&quot;), source: String(r[6]||&quot;手动&quot;), note: String(r[7]||&quot;&quot;), id: String(r[8]||&quot;&quot;)});
+    }
+    return json({ok:true, rows: rows});
+  } catch (err) { return json({ok:false, error: String(err)}); }
+}
+
+function doPost(e) {
+  try {
+    const body = JSON.parse(e.postData.contents || &quot;{}&quot;);
+    if (body.secret !== SYNC_SECRET) return json({ok:false, error:&quot;密钥不对&quot;});
+    if (body.action !== &quot;push&quot;) return json({ok:false, error:&quot;未知 action&quot;});
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sh = ss.getSheetByName(SHEET_NAME);
+    if (!sh) sh = ss.insertSheet(SHEET_NAME);
+    const rows = body.rows || [];
+    const values = [HEADERS];
+    rows.forEach(function(r){ values.push([r.date, r.merchant, r.category, r.subcategory, Number(r.amount||0), r.type, r.source, r.note||&quot;&quot;, r.id]); });
+    sh.clear();
+    sh.getRange(1, 1, values.length, values[0].length).setValues(values);
+    sh.setFrozenRows(1);
+    return json({ok:true, updated: rows.length});
+  } catch (err) { return json({ok:false, error: String(err)}); }
+}
+
+function json(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+</pre>
+    <button class="ghost" id="btnCopyGas">复制 Code.gs</button>
+  </div>
+</section>
+</main>
+<button class="fab" id="btnAdd" aria-label="记一笔">+</button>
+<nav>
+  <button id="navList" class="on">记账</button>
+  <button id="navSync">同步设置</button>
+</nav>
+<script>
+const SEED = [{"date": "2026-11-01", "merchant": "Emish Market", "category": "餐饮", "subcategory": "餐饮 · 超市买菜", "amount": 18.61, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-001"}, {"date": "2026-11-01", "merchant": "Emish Market", "category": "餐饮", "subcategory": "餐饮 · 超市买菜", "amount": 38.7, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-002"}, {"date": "2026-11-01", "merchant": "Potato Corner", "category": "餐饮", "subcategory": "餐饮 · 快餐", "amount": 8.28, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-003"}, {"date": "2026-11-01", "merchant": "Seoul Bo", "category": "餐饮", "subcategory": "餐饮 · 餐厅正餐", "amount": 2.75, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-004"}, {"date": "2026-11-01", "merchant": "Windsor Fashions", "category": "购物", "subcategory": "购物 · 服饰", "amount": 58.35, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-005"}, {"date": "2026-11-01", "merchant": "Banfield Pet Hospital", "category": "宠物", "subcategory": "宠物 · 兽医", "amount": 98.54, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-006"}, {"date": "2026-11-01", "merchant": "Hawk Dogs", "category": "餐饮", "subcategory": "餐饮 · 餐厅正餐", "amount": 11.06, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-007"}, {"date": "2026-11-01", "merchant": "Macy's", "category": "购物", "subcategory": "购物 · 百货", "amount": 18.79, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-008"}, {"date": "2026-11-01", "merchant": "State Farm", "category": "服务与保险", "subcategory": "服务 · 保险", "amount": 150.99, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-009"}, {"date": "2026-11-01", "merchant": "Bush Gardens", "category": "餐饮", "subcategory": "餐饮 · 餐厅正餐", "amount": 36.56, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-010"}, {"date": "2026-11-02", "merchant": "T&t Supermark", "category": "餐饮", "subcategory": "餐饮 · 超市买菜", "amount": 92.86, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-011"}, {"date": "2026-11-02", "merchant": "Purple Dot Cafe", "category": "餐饮", "subcategory": "餐饮 · 餐厅正餐", "amount": 52.37, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-012"}, {"date": "2026-11-03", "merchant": "Amazon", "category": "购物", "subcategory": "购物 · 线上平台", "amount": 26.51, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-013"}, {"date": "2026-11-03", "merchant": "Walmart", "category": "购物", "subcategory": "购物 · 大型超市", "amount": 82.33, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-014"}, {"date": "2026-11-04", "merchant": "Apple", "category": "娱乐", "subcategory": "娱乐 · 其他", "amount": 3.3, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-015"}, {"date": "2026-11-04", "merchant": "Proactive Phy", "category": "个人护理与健身", "subcategory": "个人护理 · 理发美容", "amount": 11.22, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-016"}, {"date": "2026-11-04", "merchant": "Elc", "category": "购物", "subcategory": "购物 · 服饰", "amount": 254.59, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-017"}, {"date": "2026-11-04", "merchant": "HIDEF Physical Therapy", "category": "医疗", "subcategory": "医疗 · 门诊", "amount": 13.5, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-018"}, {"date": "2026-11-04", "merchant": "LA Fitness", "category": "个人护理与健身", "subcategory": "健身 · 健身房", "amount": 38.66, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-019"}, {"date": "2026-11-04", "merchant": "LA Fitness", "category": "个人护理与健身", "subcategory": "健身 · 健身房", "amount": 44.19, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-020"}, {"date": "2026-11-04", "merchant": "SP FOCO.COM", "category": "购物", "subcategory": "购物 · 服饰", "amount": -117.08, "type": "退款/冲抵", "source": "Amex同步", "note": "", "id": "AMEX-202611-021"}, {"date": "2026-11-05", "merchant": "Webber Chiropractic Sports Clinic", "category": "医疗", "subcategory": "医疗 · 其他", "amount": 19.78, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-022"}, {"date": "2026-11-06", "merchant": "Hechalou", "category": "餐饮", "subcategory": "餐饮 · 咖啡", "amount": 6.9, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-023"}, {"date": "2026-11-06", "merchant": "Mark Tseng Pl", "category": "转账", "subcategory": "转账 · 转出", "amount": 360, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-024"}, {"date": "2026-11-06", "merchant": "Walmart", "category": "购物", "subcategory": "购物 · 大型超市", "amount": 33.31, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-025"}, {"date": "2026-11-07", "merchant": "Amazon", "category": "购物", "subcategory": "购物 · 线上平台", "amount": -22.09, "type": "退款/冲抵", "source": "Amex同步", "note": "", "id": "AMEX-202611-026"}, {"date": "2026-11-07", "merchant": "Molly Moon's", "category": "餐饮", "subcategory": "餐饮 · 其他餐饮", "amount": 10.98, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-027"}, {"date": "2026-11-08", "merchant": "Daiso", "category": "购物", "subcategory": "购物 · 折扣店", "amount": 26.05, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-028"}, {"date": "2026-11-08", "merchant": "Hakka House", "category": "餐饮", "subcategory": "餐饮 · 餐厅正餐", "amount": 116.76, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-029"}, {"date": "2026-11-08", "merchant": "Regent Bakery", "category": "餐饮", "subcategory": "餐饮 · 其他餐饮", "amount": 25.55, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-030"}, {"date": "2026-11-08", "merchant": "Rover", "category": "宠物", "subcategory": "宠物 · 用品与服务", "amount": 327.45, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-031"}, {"date": "2026-11-08", "merchant": "The Home Depot", "category": "居住与家居", "subcategory": "家居 · 五金建材", "amount": 187.39, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-032"}, {"date": "2026-11-08", "merchant": "Guard", "category": "购物", "subcategory": "购物 · 其他日用", "amount": 214.8, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-033"}, {"date": "2026-11-08", "merchant": "Safeway", "category": "餐饮", "subcategory": "餐饮 · 超市买菜", "amount": 48.27, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-034"}, {"date": "2026-11-08", "merchant": "Walmart", "category": "购物", "subcategory": "购物 · 大型超市", "amount": 16.97, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-035"}, {"date": "2026-11-09", "merchant": "The Home Depot", "category": "居住与家居", "subcategory": "家居 · 五金建材", "amount": -77.18, "type": "退款/冲抵", "source": "Amex同步", "note": "", "id": "AMEX-202611-036"}, {"date": "2026-11-09", "merchant": "The Home Depot", "category": "居住与家居", "subcategory": "家居 · 五金建材", "amount": 23.14, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-037"}, {"date": "2026-11-09", "merchant": "Apple", "category": "娱乐", "subcategory": "娱乐 · 其他", "amount": 9.99, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-038"}, {"date": "2026-11-09", "merchant": "Express Mart", "category": "购物", "subcategory": "购物 · 便利店", "amount": 14.85, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-039"}, {"date": "2026-11-09", "merchant": "Walmart", "category": "购物", "subcategory": "购物 · 大型超市", "amount": -19.83, "type": "退款/冲抵", "source": "Amex同步", "note": "", "id": "AMEX-202611-040"}, {"date": "2026-11-09", "merchant": "T&t Supermark", "category": "餐饮", "subcategory": "餐饮 · 超市买菜", "amount": 182.64, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-041"}, {"date": "2026-11-09", "merchant": "Banfield Pet Hospital", "category": "宠物", "subcategory": "宠物 · 兽医", "amount": 49.62, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-042"}, {"date": "2026-11-10", "merchant": "Puget Sound Energy", "category": "居住与家居", "subcategory": "居住 · 水电燃气", "amount": 238.99, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-043"}];
+const LS_KEY = "family-bookkeeping-v1";
+const LS_SYNC = "family-bookkeeping-sync-v1";
+const CATS = {
+"餐饮":["餐饮 · 超市买菜","餐饮 · 餐厅正餐","餐饮 · 快餐","餐饮 · 咖啡","餐饮 · 其他餐饮"],
+"购物":["购物 · 大型超市","购物 · 百货","购物 · 服饰","购物 · 线上平台","购物 · 便利店","购物 · 折扣店","购物 · 其他日用"],
+"旅行":["旅行 · 机票","旅行 · 酒店","旅行 · 其他"],
+"个人护理与健身":["个人护理 · 理发美容","健身 · 健身房","个人护理 · 其他"],
+"娱乐":["娱乐 · 影视","娱乐 · 其他"],
+"宠物":["宠物 · 兽医","宠物 · 用品与服务"],
+"服务与保险":["服务 · 保险","服务 · 其他"],
+"交通":["交通 · 加油","交通 · 打车","交通 · 停车","交通 · 其他"],
+"居住与家居":["家居 · 五金建材","居住 · 水电燃气","居住 · 房租/房贷","居住 · 其他"],
+"医疗":["医疗 · 门诊","医疗 · 其他"],
+"转账":["转账 · 转出","转账 · 转入"],
+"银行费用":["银行费用 · 手续费","银行费用 · 其他"],
+"收入":["收入 · 工资","收入 · 退款","收入 · 其他"]};
+let rows = load();
+function load(){ try{ const s=localStorage.getItem(LS_KEY); if(s){ const a=JSON.parse(s); if(Array.isArray(a)&&a.length) return a; } }catch(e){} return SEED.slice(); }
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(rows)); }
+const $=id=>document.getElementById(id);
+const money=n=>"$"+Number(n||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+function fillCats(){ $("fCat").innerHTML=Object.keys(CATS).map(c=>`<option>${c}</option>`).join(""); fillSubs(); }
+function fillSubs(){ const c=$("fCat").value; $("fSub").innerHTML=(CATS[c]||[]).map(s=>`<option>${s}</option>`).join(""); }
+$("fCat").addEventListener("change", fillSubs); fillCats();
+function monthRows(){ const m=$("month").value||"2026-11"; return rows.filter(r=>String(r.date).slice(0,7)===m); }
+function render(){
+  const m=$("month").value||"2026-11";
+  let list=monthRows();
+  const q=($("q").value||"").trim().toLowerCase(), sf=$("srcFilter").value;
+  const net=list.reduce((a,r)=>a+Number(r.amount||0),0);
+  const spent=list.filter(r=>Number(r.amount)>0).reduce((a,r)=>a+Number(r.amount),0);
+  const refunds=list.filter(r=>Number(r.amount)<0).reduce((a,r)=>a+Number(r.amount),0);
+  $("net").textContent=money(net); $("spent").textContent=money(spent); $("refunds").textContent=money(refunds); $("count").textContent=list.length;
+  const byCat={}; list.forEach(r=>{ byCat[r.category]=(byCat[r.category]||0)+Number(r.amount||0); });
+  const max=Math.max(1,...Object.values(byCat).map(Math.abs));
+  const CATCOLORS={"餐饮":"#f59e0b","购物":"#8b5cf6","旅行":"#06b6d4","个人护理与健身":"#ec4899","娱乐":"#f43f5e","宠物":"#f97316","服务与保险":"#64748b","交通":"#0ea5e9","居住与家居":"#22c55e","医疗":"#ef4444","转账":"#94a3b8","银行费用":"#78716c","收入":"#16a34a"};
+  $("cats").innerHTML=Object.entries(byCat).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).map(([c,v])=>`<div class="cat"><div class="cat-top"><span class="cat-dot" style="background:${CATCOLORS[c]||"#2563eb"}"></span><span class="cat-name">${c}</span><b class="cat-amt">${money(v)}</b></div><div class="bar"><i style="width:${Math.round(Math.abs(v)/max*100)}%;background:${CATCOLORS[c]||"#2563eb"}"></i></div></div>`).join("")||'<p class="muted">这个月还没有记录</p>';
+  if(q) list=list.filter(r=>(r.merchant||"").toLowerCase().includes(q));
+  if(sf) list=list.filter(r=>r.source===sf);
+  list=list.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  $("list").innerHTML=list.map(r=>`<div class="tx" data-id="${r.id}"><div class="avatar">${(r.merchant||"?").slice(0,1)}</div><div class="tx-main"><div class="tx-name">${r.merchant}<span class="tag">${r.source}</span></div><div class="muted">${r.date} · ${r.category} · ${r.subcategory}${r.note?" · "+r.note:""}</div></div><div class="amt ${Number(r.amount)<0?"neg":""}">${money(r.amount)}</div></div>`).join("")||'<p class="muted">没有符合条件的记录</p>';
+  document.querySelectorAll(".tx").forEach(el=>el.addEventListener("click",()=>openEdit(el.dataset.id)));
+}
+function show(v){ ["view-list","view-form","view-sync"].forEach(id=>$(id).classList.toggle("hidden", id!==v)); $("navList").classList.toggle("on", v==="view-list"); $("navSync").classList.toggle("on", v==="view-sync"); }
+$("navList").onclick=()=>{ show("view-list"); render(); };
+$("navSync").onclick=()=>{ show("view-sync"); };
+$("month").addEventListener("change", render); $("q").addEventListener("input", render); $("srcFilter").addEventListener("change", render);
+$("btnAdd").onclick=()=>{ openEdit(null); };
+function openEdit(id){
+  const r=id?rows.find(x=>x.id===id):null;
+  $("formTitle").textContent=r?"编辑这笔":"记一笔";
+  $("fId").value=r?r.id:"";
+  $("fDate").value=r?r.date:new Date().toISOString().slice(0,10);
+  $("fMerchant").value=r?r.merchant:"";
+  $("fCat").value=r?r.category:"餐饮"; fillSubs();
+  $("fSub").value=r?r.subcategory:(CATS[$("fCat").value]||[])[0];
+  $("fAmount").value=r?r.amount:"";
+  $("fType").value=r?r.type:"支出";
+  $("fSource").value=r?r.source:"手动";
+  $("fNote").value=r?r.note:"";
+  $("btnDelete").classList.toggle("hidden", !r);
+  $("formMsg").textContent="";
+  show("view-form");
+}
+$("btnCancel").onclick=()=>show("view-list");
+$("btnSave").onclick=()=>{
+  const amt=parseFloat($("fAmount").value);
+  if(!$("fMerchant").value.trim()||isNaN(amt)){ $("formMsg").textContent="请填商家和金额。"; return; }
+  let signed=amt;
+  if($("fType").value==="退款/冲抵") signed=-Math.abs(amt);
+  if($("fType").value==="支出") signed=Math.abs(amt);
+  const id=$("fId").value||("MAN-"+$("fDate").value.replaceAll("-","")+"-"+String(Date.now()).slice(-6));
+  const rec={date:$("fDate").value,merchant:$("fMerchant").value.trim(),category:$("fCat").value,subcategory:$("fSub").value,amount:signed,type:$("fType").value,source:$("fSource").value,note:$("fNote").value.trim(),id};
+  const i=rows.findIndex(x=>x.id===id);
+  if(i>=0) rows[i]=rec; else rows.push(rec);
+  save(); show("view-list"); render();
+};
+$("btnDelete").onclick=()=>{
+  if(!confirm("确定删除这笔吗？")) return;
+  rows=rows.filter(x=>x.id!==$("fId").value); save(); show("view-list"); render();
+};
+function toSheetRow(r){ return [r.date,r.merchant,r.category,r.subcategory,r.amount,r.type,r.source,r.note||"",r.id]; }
+$("btnExportCsv").onclick=()=>{
+  const head=["日期","商家","大类","细分类","金额 (USD)","类型","来源","备注","交易ID"];
+  const esc=v=>`"${String(v??"").replaceAll('"','""')}"`;
+  const csv=[head.map(esc).join(",")].concat(rows.map(r=>toSheetRow(r).map(esc).join(","))).join("\n");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv"})); a.download="家庭记账-所有交易.csv"; a.click();
+};
+$("btnExportXlsx").onclick=()=>{
+  if(!window.XLSX){ alert("xlsx 库还没加载好，请联网后重试。"); return; }
+  const head=["日期","商家","大类","细分类","金额 (USD)","类型","来源","备注","交易ID"];
+  const ws=XLSX.utils.aoa_to_sheet([head].concat(rows.map(toSheetRow)));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"所有交易"); XLSX.writeFile(wb,"家庭记账-所有交易.xlsx");
+};
+$("fileImport").addEventListener("change", async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  let imported=[];
+  try{
+    if(/\.csv$/i.test(f.name)){
+      const text=await f.text();
+      const lines=text.replace(/^\ufeff/,"").trim().split(/\r?\n/);
+      const parseLine=s=>{ const out=[]; let cur="",q=false; for(let i=0;i<s.length;i++){ const ch=s[i]; if(ch==='"'){ if(q&&s[i+1]==='"'){cur+='"';i++;} else q=!q; } else if(ch===","&&!q){ out.push(cur); cur=""; } else cur+=ch; } out.push(cur); return out; };
+      const head=parseLine(lines[0]);
+      for(let i=1;i<lines.length;i++){ const c=parseLine(lines[i]); if(c.length<5) continue; imported.push({date:c[0],merchant:c[1],category:c[2],subcategory:c[3],amount:parseFloat(c[4]),type:c[5]||"支出",source:c[6]||"手动",note:c[7]||"",id:c[8]||""}); }
+    } else {
+      const buf=await f.arrayBuffer(); const wb=XLSX.read(buf); const ws=wb.Sheets[wb.SheetNames[0]];
+      const aoa=XLSX.utils.sheet_to_json(ws,{header:1});
+      for(let i=1;i<aoa.length;i++){ const c=aoa[i]; if(!c||!c[0]) continue; let d=c[0]; if(d instanceof Date) d=d.toISOString().slice(0,10); imported.push({date:String(d).slice(0,10),merchant:c[1],category:c[2],subcategory:c[3],amount:Number(c[4]),type:c[5]||"支出",source:c[6]||"手动",note:c[7]||"",id:c[8]||""}); }
+    }
+    let added=0, skipped=0;
+    const seen=new Set(rows.map(r=>r.id)); const seen2=new Set(rows.map(r=>r.date+"|"+r.merchant+"|"+r.amount));
+    imported.forEach(r=>{ if(!r.id) r.id="IMP-"+Date.now()+"-"+Math.floor(Math.random()*1e6); if(seen.has(r.id)||seen2.has(r.date+"|"+r.merchant+"|"+r.amount)){ skipped++; } else { rows.push(r); seen.add(r.id); added++; } });
+    save(); render(); $("importMsg").textContent=`导入完成：新增 ${added} 笔，跳过重复 ${skipped} 笔。`;
+  }catch(err){ $("importMsg").textContent="导入失败："+err.message; }
+  e.target.value="";
+});
+// Sync via Apps Script
+function getSync(){ try{ return JSON.parse(localStorage.getItem(LS_SYNC)||"{}"); }catch(e){ return {}; } }
+function setSyncMsg(t){ $("syncMsg").textContent=t; }
+(function initSync(){ const s=getSync(); if(s.url) $("sUrl").value=s.url; if(s.secret) $("sSecret").value=s.secret; if(s.lastSync) $("lastSync").textContent=s.lastSync; })();
+$("btnSaveSync").onclick=()=>{ const s={url:$("sUrl").value.trim(),secret:$("sSecret").value.trim(),lastSync:getSync().lastSync||""}; localStorage.setItem(LS_SYNC, JSON.stringify(s)); setSyncMsg("设置已保存。"); };
+async function pull(){
+  const s=getSync(); if(!s.url){ setSyncMsg("请先填 Apps Script 网址和密钥。"); return; }
+  setSyncMsg("正在拉取…");
+  try{
+    const res=await fetch(s.url+"?action=pull&secret="+encodeURIComponent(s.secret||""));
+    const data=await res.json();
+    if(!data.ok) throw new Error(data.error||"拉取失败");
+    const incoming=(data.rows||[]).map(r=>({date:String(r.date).slice(0,10),merchant:r.merchant,category:r.category,subcategory:r.subcategory,amount:Number(r.amount),type:r.type||"支出",source:r.source||"Amex同步",note:r.note||"",id:r.id}));
+    rows=incoming; save(); render();
+    const now=new Date().toLocaleString(); const ns={...s,lastSync:now}; localStorage.setItem(LS_SYNC, JSON.stringify(ns)); $("lastSync").textContent=now;
+    setSyncMsg(`拉取成功：${incoming.length} 笔，净额 ${money(incoming.reduce((a,r)=>a+Number(r.amount||0),0))}。`);
+  }catch(err){ setSyncMsg("拉取失败："+err.message+"。检查网址、部署权限是不是“任何人”、密钥对不对。"); }
+}
+async function push(){
+  const s=getSync(); if(!s.url){ setSyncMsg("请先填 Apps Script 网址和密钥。"); return; }
+  setSyncMsg("正在推送…");
+  try{
+    const res=await fetch(s.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"push",secret:s.secret||"",rows})});
+    const data=await res.json();
+    if(!data.ok) throw new Error(data.error||"推送失败");
+    const now=new Date().toLocaleString(); const ns={...s,lastSync:now}; localStorage.setItem(LS_SYNC, JSON.stringify(ns)); $("lastSync").textContent=now;
+    setSyncMsg(`推送成功：已写入 ${data.updated||rows.length} 行到 Sheet。`);
+  }catch(err){ setSyncMsg("推送失败："+err.message); }
+}
+$("btnPull").onclick=pull; $("btnPush").onclick=push;
+$("btnCopyGas").onclick=async ()=>{ try{ await navigator.clipboard.writeText($("gasCode").textContent); $("btnCopyGas").textContent="已复制"; }catch(e){ $("btnCopyGas").textContent="复制失败，请手动全选复制"; } };
+render();
+</script>
+</body>
+</html>
