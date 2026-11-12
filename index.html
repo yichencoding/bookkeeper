@@ -16,6 +16,8 @@ main{max-width:680px;margin:0 auto;padding:16px 14px 110px}
 .hero .lbl{font-size:13px;opacity:.85} .hero .big{font-size:36px;font-weight:800;margin:4px 0 14px;letter-spacing:-.5px}
 .hero-stats{display:flex;gap:10px} .hero-stats div{flex:1;background:rgba(255,255,255,.14);border-radius:12px;padding:10px 12px}
 .hero-stats .k{font-size:12px;opacity:.85} .hero-stats .v{font-size:17px;font-weight:700;margin-top:2px}
+.hero-budget{display:flex;justify-content:space-between;gap:8px;font-size:13px;margin-top:14px;opacity:.95} .hero-budget b{font-weight:700}
+.hero-bar{height:8px;background:rgba(255,255,255,.25);border-radius:99px;overflow:hidden;margin-top:8px} .hero-bar>i{display:block;height:100%;background:#fff;border-radius:99px}
 .muted{color:#64748b;font-size:13px} .big{font-size:28px;font-weight:800}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap} .row>*{flex:1;min-width:0}
 input,select,textarea{width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:16px;background:#fff;color:#0f172a;outline:none}
@@ -32,7 +34,7 @@ h3{margin:0 0 10px;font-size:16px;font-weight:800}
 .tag{display:inline-block;font-size:11px;background:#eef2ff;color:#1d4ed8;border-radius:20px;padding:2px 8px;margin-left:6px;font-weight:700}
 .cat{margin:12px 0} .cat-top{display:flex;align-items:center;gap:8px} .cat-dot{width:10px;height:10px;border-radius:50%;flex:0 0 10px} .cat-name{flex:1;font-weight:600} .cat-amt{font-weight:800}
 .bar{height:8px;background:#f1f5f9;border-radius:99px;overflow:hidden;margin-top:8px} .bar>i{display:block;height:100%;background:#2563eb;border-radius:99px}
-.filters{display:flex;gap:10px;margin-bottom:12px} .filters>*{flex:1}
+.filters{display:flex;gap:10px;margin-bottom:12px} .filters>*{flex:1;min-width:0}
 .search{position:relative} .search input{padding-left:14px}
 nav{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-top:1px solid #e8ecf1;display:flex;max-width:680px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom)}
 nav button{flex:1;background:transparent;color:#64748b;border-radius:0;padding:15px 0;font-size:15px}
@@ -44,7 +46,7 @@ pre{white-space:pre-wrap;word-break:break-all;background:#f8fafc;padding:12px;bo
 </style>
 </head>
 <body>
-<header><h1>家庭记账 <span>· 11月</span></h1><p>数据在 Google Sheets（家庭记账） · 金额带符号：支出正、退款负</p></header>
+<header><h1>家庭记账 <span id="hdrMonth">· 11月</span></h1><p>数据在 Google Sheets（家庭记账） · 金额带符号：支出正、退款负</p></header>
 <main>
 <section id="view-list">
   <div class="hero">
@@ -53,8 +55,10 @@ pre{white-space:pre-wrap;word-break:break-all;background:#f8fafc;padding:12px;bo
     <div class="hero-stats">
       <div><div class="k">支出合计</div><div class="v" id="spent">$0.00</div></div>
       <div><div class="k">退款</div><div class="v" id="refunds">$0.00</div></div>
-      <div><div class="k">本月</div><div class="v">2026-11</div></div>
+      <div><div class="k">本月</div><div class="v" id="heroMonth">2026-11</div></div>
     </div>
+    <div class="hero-budget"><span>预算 <b id="heroBudget">$5,000.00</b></span><span>还剩 <b id="heroLeft">$5,000.00</b></span><span id="heroPct">已用 0%</span></div>
+    <div class="hero-bar"><i id="heroBarFill" style="width:0%"></i></div>
   </div>
   <div class="card">
     <div class="filters">
@@ -86,7 +90,7 @@ pre{white-space:pre-wrap;word-break:break-all;background:#f8fafc;padding:12px;bo
     <label>商家</label><input id="fMerchant" placeholder="如 T&amp;T Supermarket">
     <label>大类</label><select id="fCat"></select>
     <label>细分类</label><select id="fSub"></select>
-    <label>金额（USD，支出填正数，退款填负数）</label><input type="number" step="0.01" id="fAmount" placeholder="如 25.50，退款填 -20.00">
+    <label>金额（USD，填正数，符号由类型决定）</label><input type="number" step="0.01" id="fAmount" placeholder="如 25.50">
     <label>类型</label><select id="fType"><option>支出</option><option>退款/冲抵</option><option>收入</option><option>转账</option></select>
     <label>来源</label><select id="fSource"><option>手动</option><option>Amex同步</option></select>
     <label>备注</label><input id="fNote" placeholder="选填，如 Milly 看病">
@@ -102,6 +106,7 @@ pre{white-space:pre-wrap;word-break:break-all;background:#f8fafc;padding:12px;bo
     <p class="muted">不用登录 Muse。这个 App 直接连你自己部署的 Apps Script，再由脚本读写你的 Google Sheets。密钥只存在你这台设备上。拉取分两个 tab：Amex交易（只读）+ 手动交易；推送只写「手动交易」，绝不碰 Amex。记一笔保存后会自动推送。</p>
     <label>Apps Script Web App 网址</label><input id="sUrl" placeholder="https://script.google.com/macros/s/.../exec">
     <label>同步密钥（和脚本里 SYNC_SECRET 填一样的）</label><input id="sSecret" placeholder="自己定一个，如 jia-ting-2026">
+    <label>每月预算（USD）</label><input id="sBudget" type="number" step="1" min="0" placeholder="5000">
     <div class="row" style="margin-top:12px"><button id="btnSaveSync">保存设置</button><button class="ghost" id="btnPull">从 Sheet 拉取</button><button class="ghost" id="btnPush">推送手动到 Sheet</button></div>
     <p class="muted" id="syncMsg">未配置同步。先按下面 3 步部署（旧版 Code.gs 必须换成 v3.3），再回来填网址。</p>
     <p class="muted">上次同步：<span id="lastSync">从未</span></p>
@@ -112,9 +117,11 @@ pre{white-space:pre-wrap;word-break:break-all;background:#f8fafc;padding:12px;bo
     <ol class="muted" style="line-height:1.7;padding-left:18px">
       <li>打开你的 Google Sheets《家庭记账》，确认有「所有交易」这个 tab，第 1 行是 9 列标题。</li>
       <li>在 Sheet 里点 扩展程序 → Apps Script，把下面 Code.gs v3.3 的全部代码粘贴进去（替换旧版），把 SYNC_SECRET 改成你自己的密钥，点 部署 → 管理部署 → 选已有的 Web 应用 → 新版本 → 部署。网址不变，不用改 App 里的网址。</li>
-      <li>把网址和密钥填到上面，点「从 Sheet 拉取」验证一次（应显示 Amex 43 笔、手动 0 笔）。成功后 App 里记一笔，会自动推送到「手动交易」，再打开 Sheet 检查。</li>
+      <li>把网址和密钥填到上面，点「从 Sheet 拉取」验证一次（应显示 Amex 160 笔、手动 1 笔）。成功后 App 里记一笔，会自动推送到「手动交易」，再打开 Sheet 检查。</li>
     </ol>
-    <label>Code.gs（一键复制）</label>
+    <button class="ghost" id="btnToggleGas" style="width:100%">查看 Code.gs（部署用）</button>
+    <div id="gasWrap" class="hidden">
+      <label>Code.gs（一键复制）</label>
     <pre id="gasCode">// 家庭记账 · Apps Script 桥接 v3.3（隔离版 + 时区修复）
 // 部署：打开 Google Sheets《家庭记账》→ 扩展程序 → Apps Script → 把本文件
 // 全部粘贴进去（替换掉旧版）→ 把 SYNC_SECRET 改成你自己的密钥
@@ -178,7 +185,8 @@ function json(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 </pre>
-    <button class="ghost" id="btnCopyGas">复制 Code.gs</button>
+      <button class="ghost" id="btnCopyGas">复制 Code.gs</button>
+    </div>
   </div>
 </section>
 </main>
@@ -210,6 +218,9 @@ const CATS = {
 const LS_KEY = "family-bookkeeping-v3";
 const LS_SYNC = "family-bookkeeping-sync-v1";
 const LS_DIRTY = "family-bookkeeping-v3-dirty";
+const LS_BUDGET = "family-bookkeeping-budget";
+const DEFAULT_BUDGET = 5000;
+function getBudget(){ try{ const v=parseFloat(localStorage.getItem(LS_BUDGET)); if(!isNaN(v)&&v>0) return v; }catch(e){} return DEFAULT_BUDGET; }
 function loadStore(){
   try{
     const s = localStorage.getItem(LS_KEY);
@@ -244,6 +255,16 @@ function render(){
   const spent=list.filter(r=>Number(r.amount)>0).reduce((a,r)=>a+Number(r.amount),0);
   const refunds=list.filter(r=>Number(r.amount)<0).reduce((a,r)=>a+Number(r.amount),0);
   $("net").textContent=money(net); $("spent").textContent=money(spent); $("refunds").textContent=money(refunds); $("count").textContent=list.length;
+  const m=$("month").value||localISODate(new Date()).slice(0,7);
+  $("heroMonth").textContent=m;
+  $("hdrMonth").textContent="· "+parseInt(m.slice(5),10)+"月";
+  const budget=getBudget();
+  const left=budget-net, pct=budget>0?Math.round(Math.min(100,Math.max(0,net/budget*100))):0;
+  $("heroBudget").textContent=money(budget);
+  $("heroLeft").textContent=money(left);
+  $("heroLeft").style.color=left<0?"#fca5a5":"";
+  $("heroPct").textContent="已用 "+pct+"%";
+  $("heroBarFill").style.width=pct+"%";
   const byCat={}; list.forEach(r=>{ byCat[r.category]=(byCat[r.category]||0)+Number(r.amount||0); });
   const max=Math.max(1,...Object.values(byCat).map(Math.abs));
   const CATCOLORS={"餐饮":"#f59e0b","购物":"#8b5cf6","旅行":"#06b6d4","个人护理与健身":"#ec4899","娱乐":"#f43f5e","宠物":"#f97316","服务与保险":"#64748b","交通":"#0ea5e9","居住与家居":"#22c55e","医疗":"#ef4444","转账":"#94a3b8","银行费用":"#78716c","收入":"#16a34a"};
@@ -344,8 +365,8 @@ $("fileImport").addEventListener("change", async e=>{
 // ---- 同步 v3：拉取分两个 tab，推送只写「手动交易」----
 function getSync(){ try{ return JSON.parse(localStorage.getItem(LS_SYNC)||"{}"); }catch(e){ return {}; } }
 function setSyncMsg(t){ $("syncMsg").textContent=t; }
-(function initSync(){ const s=getSync(); if(s.url) $("sUrl").value=s.url; if(s.secret) $("sSecret").value=s.secret; if(s.lastSync) $("lastSync").textContent=s.lastSync; })();
-$("btnSaveSync").onclick=()=>{ const s={url:$("sUrl").value.trim(),secret:$("sSecret").value.trim(),lastSync:getSync().lastSync||""}; localStorage.setItem(LS_SYNC, JSON.stringify(s)); setSyncMsg("设置已保存。打开 App 会自动拉取，记一笔会自动推送。"); };
+(function initSync(){ const s=getSync(); if(s.url) $("sUrl").value=s.url; if(s.secret) $("sSecret").value=s.secret; if(s.lastSync) $("lastSync").textContent=s.lastSync; $("sBudget").value=getBudget(); })();
+$("btnSaveSync").onclick=()=>{ const s={url:$("sUrl").value.trim(),secret:$("sSecret").value.trim(),lastSync:getSync().lastSync||""}; localStorage.setItem(LS_SYNC, JSON.stringify(s)); const bv=parseFloat($("sBudget").value); try{ localStorage.setItem(LS_BUDGET, (!isNaN(bv)&&bv>0)?String(bv):""); }catch(e){} setSyncMsg("设置已保存。打开 App 会自动拉取，记一笔会自动推送。"); render(); };
 function normRow(r){ return {date:String(r.date).slice(0,10),merchant:r.merchant,category:r.category,subcategory:r.subcategory,amount:Number(r.amount),type:r.type||"支出",source:r.source||"手动",note:r.note||"",id:r.id}; }
 async function pull(){
   const s=getSync(); if(!s.url){ setSyncMsg("请先填 Apps Script 网址和密钥。"); return; }
@@ -399,6 +420,7 @@ function queuedPush(task){ pushChain=pushChain.then(task, task); return pushChai
 let emptyPullArmed=false;
 $("btnPull").onclick=pull;
 $("btnPush").onclick=()=>queuedPush(async ()=>{ setSyncMsg("正在推送手动记录…"); const ok=await pushManual(); if(ok) setSyncMsg(`推送成功：手动 ${manualRows.length} 笔已写入 Sheet 的「手动交易」。Amex 未动。`); });
+$("btnToggleGas").onclick=()=>{ const w=$("gasWrap"); w.classList.toggle("hidden"); $("btnToggleGas").textContent=w.classList.contains("hidden")?"查看 Code.gs（部署用）":"收起 Code.gs"; };
 $("btnCopyGas").onclick=async ()=>{ try{ await navigator.clipboard.writeText($("gasCode").textContent); $("btnCopyGas").textContent="已复制"; }catch(e){ $("btnCopyGas").textContent="复制失败，请手动全选复制"; } };
 render();
 // 月份默认当月（不再写死 2026-11）
@@ -416,6 +438,6 @@ try{
 (async function(){ const s=getSync(); if(!s.url) return; if(isDirty()){ await autoPushManual(); } pull(); })();
 
 </script>
-<p class="muted" style="text-align:center;padding:8px 0 24px">家庭记账 · 版本 v3.5</p>
+<p class="muted" style="text-align:center;padding:8px 0 24px">家庭记账 · 版本 v3.6</p>
 </body>
 </html>
