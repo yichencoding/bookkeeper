@@ -114,7 +114,7 @@ pre{white-space:pre-wrap;word-break:break-all;background:#f8fafc;padding:12px;bo
       <li>把网址和密钥填到上面，点「从 Sheet 拉取」验证一次（应显示 Amex 43 笔、手动 0 笔）。成功后 App 里记一笔，会自动推送到「手动交易」，再打开 Sheet 检查。</li>
     </ol>
     <label>Code.gs（一键复制）</label>
-    <pre id="gasCode">// 家庭记账 · Apps Script 桥接 v3（隔离版）
+    <pre id="gasCode">// 家庭记账 · Apps Script 桥接 v3.1（隔离版 + 时区修复：日期用表格时区格式化）
 // 部署：打开 Google Sheets《家庭记账》→ 扩展程序 → Apps Script → 把本文件
 // 全部粘贴进去（替换掉旧版）→ 把 SYNC_SECRET 改成你自己的密钥
 // → 部署 → 管理部署 → 选已有的 Web 应用部署 → 新版本 → 部署。
@@ -133,7 +133,7 @@ function readTab(name) {
     const r = vals[i];
     if (!r[0] &amp;&amp; !r[1]) continue;
     let d = r[0];
-    if (Object.prototype.toString.call(d) === &quot;[object Date]&quot;) d = Utilities.formatDate(d, Session.getScriptTimeZone(), &quot;yyyy-MM-dd&quot;);
+    if (Object.prototype.toString.call(d) === &quot;[object Date]&quot;) d = Utilities.formatDate(d, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), &quot;yyyy-MM-dd&quot;);
     rows.push({date: String(d).slice(0,10), merchant: String(r[1]||&quot;&quot;), category: String(r[2]||&quot;&quot;), subcategory: String(r[3]||&quot;&quot;), amount: Number(r[4]||0), type: String(r[5]||&quot;支出&quot;), source: String(r[6]||&quot;手动&quot;), note: String(r[7]||&quot;&quot;), id: String(r[8]||&quot;&quot;)});
   }
   return rows;
@@ -223,6 +223,7 @@ function isDirty(){ try{ return localStorage.getItem(LS_DIRTY)==="1"; }catch(e){
 function setDirty(v){ try{ localStorage.setItem(LS_DIRTY, v?"1":"0"); }catch(e){} }
 const $=id=>document.getElementById(id);
 const money=n=>"$"+Number(n||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+function localISODate(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function fillCats(){ $("fCat").innerHTML=Object.keys(CATS).map(c=>`<option>${c}</option>`).join(""); fillSubs(); }
 function fillSubs(){ const c=$("fCat").value; $("fSub").innerHTML=(CATS[c]||[]).map(s=>`<option>${s}</option>`).join(""); }
 $("fCat").addEventListener("change", fillSubs); fillCats();
@@ -257,7 +258,7 @@ function openEdit(id){
   if(id && !r){ return; } // Amex 行不进编辑
   $("formTitle").textContent=r?"编辑这笔":"记一笔";
   $("fId").value=r?r.id:"";
-  $("fDate").value=r?r.date:new Date().toISOString().slice(0,10);
+  $("fDate").value=r?r.date:localISODate(new Date());
   $("fMerchant").value=r?r.merchant:"";
   $("fCat").value=r?r.category:"餐饮"; fillSubs();
   $("fSub").value=r?r.subcategory:(CATS[$("fCat").value]||[])[0];
@@ -313,7 +314,7 @@ $("fileImport").addEventListener("change", async e=>{
     } else {
       const buf=await f.arrayBuffer(); const wb=XLSX.read(buf); const ws=wb.Sheets[wb.SheetNames[0]];
       const aoa=XLSX.utils.sheet_to_json(ws,{header:1});
-      for(let i=1;i<aoa.length;i++){ const c=aoa[i]; if(!c||!c[0]) continue; let d=c[0]; if(d instanceof Date) d=d.toISOString().slice(0,10); imported.push({date:String(d).slice(0,10),merchant:c[1],category:c[2],subcategory:c[3],amount:Number(c[4]),type:c[5]||"支出",source:c[6]||"手动",note:c[7]||"",id:c[8]||""}); }
+      for(let i=1;i<aoa.length;i++){ const c=aoa[i]; if(!c||!c[0]) continue; let d=c[0]; if(d instanceof Date) d=localISODate(d); imported.push({date:String(d).slice(0,10),merchant:c[1],category:c[2],subcategory:c[3],amount:Number(c[4]),type:c[5]||"支出",source:c[6]||"手动",note:c[7]||"",id:c[8]||""}); }
     }
     let added=0, skipped=0;
     const seen=new Set(allRows().map(r=>r.id)); const seen2=new Set(allRows().map(r=>r.date+"|"+r.merchant+"|"+r.amount));
