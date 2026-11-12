@@ -58,7 +58,7 @@ pre{white-space:pre-wrap;word-break:break-all;background:#f8fafc;padding:12px;bo
   </div>
   <div class="card">
     <div class="filters">
-      <div><label style="margin-top:0">月份</label><input type="month" id="month" value="2026-11"></div>
+      <div><label style="margin-top:0">月份</label><input type="month" id="month"></div>
       <div><label style="margin-top:0">来源</label><select id="srcFilter"><option value="">全部</option><option>Amex同步</option><option>手动</option></select></div>
     </div>
     <div class="search"><input id="q" placeholder="搜商家，如 T&amp;T、Banfield"></div>
@@ -103,18 +103,18 @@ pre{white-space:pre-wrap;word-break:break-all;background:#f8fafc;padding:12px;bo
     <label>Apps Script Web App 网址</label><input id="sUrl" placeholder="https://script.google.com/macros/s/.../exec">
     <label>同步密钥（和脚本里 SYNC_SECRET 填一样的）</label><input id="sSecret" placeholder="自己定一个，如 jia-ting-2026">
     <div class="row" style="margin-top:12px"><button id="btnSaveSync">保存设置</button><button class="ghost" id="btnPull">从 Sheet 拉取</button><button class="ghost" id="btnPush">推送手动到 Sheet</button></div>
-    <p class="muted" id="syncMsg">未配置同步。先按下面 3 步部署（旧版 Code.gs 必须换成 v3.2），再回来填网址。</p>
+    <p class="muted" id="syncMsg">未配置同步。先按下面 3 步部署（旧版 Code.gs 必须换成 v3.3），再回来填网址。</p>
     <p class="muted">上次同步：<span id="lastSync">从未</span></p>
   </div>
   <div class="card">
     <h3 style="margin-top:0">接入指南（3 步，约 10 分钟）</h3>
     <ol class="muted" style="line-height:1.7;padding-left:18px">
       <li>打开你的 Google Sheets《家庭记账》，确认有「所有交易」这个 tab，第 1 行是 9 列标题。</li>
-      <li>在 Sheet 里点 扩展程序 → Apps Script，把下面 Code.gs v3.2 的全部代码粘贴进去（替换旧版），把 SYNC_SECRET 改成你自己的密钥，点 部署 → 管理部署 → 选已有的 Web 应用 → 新版本 → 部署。网址不变，不用改 App 里的网址。</li>
+      <li>在 Sheet 里点 扩展程序 → Apps Script，把下面 Code.gs v3.3 的全部代码粘贴进去（替换旧版），把 SYNC_SECRET 改成你自己的密钥，点 部署 → 管理部署 → 选已有的 Web 应用 → 新版本 → 部署。网址不变，不用改 App 里的网址。</li>
       <li>把网址和密钥填到上面，点「从 Sheet 拉取」验证一次（应显示 Amex 43 笔、手动 0 笔）。成功后 App 里记一笔，会自动推送到「手动交易」，再打开 Sheet 检查。</li>
     </ol>
     <label>Code.gs（一键复制）</label>
-    <pre id="gasCode">// 家庭记账 · Apps Script 桥接 v3.2（隔离版 + 时区修复）
+    <pre id="gasCode">// 家庭记账 · Apps Script 桥接 v3.3（隔离版 + 时区修复）
 // 部署：打开 Google Sheets《家庭记账》→ 扩展程序 → Apps Script → 把本文件
 // 全部粘贴进去（替换掉旧版）→ 把 SYNC_SECRET 改成你自己的密钥
 // → 部署 → 管理部署 → 选已有的 Web 应用部署 → 新版本 → 部署。
@@ -165,7 +165,7 @@ function doPost(e) {
     if (!sh) sh = ss.insertSheet(SHEET_MANUAL);
     const rows = body.rows || [];
     const values = [HEADERS];
-    rows.forEach(function(r){ values.push([r.date, r.merchant, r.category, r.subcategory, Number(r.amount||0), r.type, r.source, r.note||&quot;&quot;, r.id]); });
+    rows.forEach(function(r){ values.push([new Date(String(r.date).slice(0,10) + &quot;T12:00:00Z&quot;), r.merchant, r.category, r.subcategory, Number(r.amount||0), r.type, r.source, r.note||&quot;&quot;, r.id]); });
     sh.clear();
     sh.getRange(1, 1, values.length, values[0].length).setValues(values);
     sh.setFrozenRows(1);
@@ -187,7 +187,7 @@ function json(obj) {
   <button id="navSync">同步设置</button>
 </nav>
 <script>
-const SEED = [{"date": "2026-11-01", "merchant": "Emish Market", "category": "餐饮", "subcategory": "餐饮 · 超市买菜", "amount": 18.61, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-001"}, {"date": "2026-11-01", "merchant": "Emish Market", "category": "餐饮", "subcategory": "餐饮 · 超市买菜", "amount": 38.7, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-002"}, {"date": "2026-11-01", "merchant": "Potato Corner", "category": "餐饮", "subcategory": "餐饮 · 快餐", "amount": 8.28, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-003"}, {"date": "2026-11-01", "merchant": "Seoul Bo", "category": "餐饮", "subcategory": "餐饮 · 餐厅正餐", "amount": 2.75, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-004"}, {"date": "2026-11-01", "merchant": "Windsor Fashions", "category": "购物", "subcategory": "购物 · 服饰", "amount": 58.35, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-005"}, {"date": "2026-11-01", "merchant": "Banfield Pet Hospital", "category": "宠物", "subcategory": "宠物 · 兽医", "amount": 98.54, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-006"}, {"date": "2026-11-01", "merchant": "Hawk Dogs", "category": "餐饮", "subcategory": "餐饮 · 餐厅正餐", "amount": 11.06, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-007"}, {"date": "2026-11-01", "merchant": "Macy's", "category": "购物", "subcategory": "购物 · 百货", "amount": 18.79, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-008"}, {"date": "2026-11-01", "merchant": "State Farm", "category": "服务与保险", "subcategory": "服务 · 保险", "amount": 150.99, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-009"}, {"date": "2026-11-01", "merchant": "Bush Gardens", "category": "餐饮", "subcategory": "餐饮 · 餐厅正餐", "amount": 36.56, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-010"}, {"date": "2026-11-02", "merchant": "T&t Supermark", "category": "餐饮", "subcategory": "餐饮 · 超市买菜", "amount": 92.86, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-011"}, {"date": "2026-11-02", "merchant": "Purple Dot Cafe", "category": "餐饮", "subcategory": "餐饮 · 餐厅正餐", "amount": 52.37, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-012"}, {"date": "2026-11-03", "merchant": "Amazon", "category": "购物", "subcategory": "购物 · 线上平台", "amount": 26.51, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-013"}, {"date": "2026-11-03", "merchant": "Walmart", "category": "购物", "subcategory": "购物 · 大型超市", "amount": 82.33, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-014"}, {"date": "2026-11-04", "merchant": "Apple", "category": "娱乐", "subcategory": "娱乐 · 其他", "amount": 3.3, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-015"}, {"date": "2026-11-04", "merchant": "Proactive Phy", "category": "个人护理与健身", "subcategory": "个人护理 · 理发美容", "amount": 11.22, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-016"}, {"date": "2026-11-04", "merchant": "Elc", "category": "购物", "subcategory": "购物 · 服饰", "amount": 254.59, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-017"}, {"date": "2026-11-04", "merchant": "HIDEF Physical Therapy", "category": "医疗", "subcategory": "医疗 · 门诊", "amount": 13.5, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-018"}, {"date": "2026-11-04", "merchant": "LA Fitness", "category": "个人护理与健身", "subcategory": "健身 · 健身房", "amount": 38.66, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-019"}, {"date": "2026-11-04", "merchant": "LA Fitness", "category": "个人护理与健身", "subcategory": "健身 · 健身房", "amount": 44.19, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-020"}, {"date": "2026-11-04", "merchant": "SP FOCO.COM", "category": "购物", "subcategory": "购物 · 服饰", "amount": -117.08, "type": "退款/冲抵", "source": "Amex同步", "note": "", "id": "AMEX-202611-021"}, {"date": "2026-11-05", "merchant": "Webber Chiropractic Sports Clinic", "category": "医疗", "subcategory": "医疗 · 其他", "amount": 19.78, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-022"}, {"date": "2026-11-06", "merchant": "Hechalou", "category": "餐饮", "subcategory": "餐饮 · 咖啡", "amount": 6.9, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-023"}, {"date": "2026-11-06", "merchant": "Mark Tseng Pl", "category": "转账", "subcategory": "转账 · 转出", "amount": 360, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-024"}, {"date": "2026-11-06", "merchant": "Walmart", "category": "购物", "subcategory": "购物 · 大型超市", "amount": 33.31, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-025"}, {"date": "2026-11-07", "merchant": "Amazon", "category": "购物", "subcategory": "购物 · 线上平台", "amount": -22.09, "type": "退款/冲抵", "source": "Amex同步", "note": "", "id": "AMEX-202611-026"}, {"date": "2026-11-07", "merchant": "Molly Moon's", "category": "餐饮", "subcategory": "餐饮 · 其他餐饮", "amount": 10.98, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-027"}, {"date": "2026-11-08", "merchant": "Daiso", "category": "购物", "subcategory": "购物 · 折扣店", "amount": 26.05, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-028"}, {"date": "2026-11-08", "merchant": "Hakka House", "category": "餐饮", "subcategory": "餐饮 · 餐厅正餐", "amount": 116.76, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-029"}, {"date": "2026-11-08", "merchant": "Regent Bakery", "category": "餐饮", "subcategory": "餐饮 · 其他餐饮", "amount": 25.55, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-030"}, {"date": "2026-11-08", "merchant": "Rover", "category": "宠物", "subcategory": "宠物 · 用品与服务", "amount": 327.45, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-031"}, {"date": "2026-11-08", "merchant": "The Home Depot", "category": "居住与家居", "subcategory": "家居 · 五金建材", "amount": 187.39, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-032"}, {"date": "2026-11-08", "merchant": "Guard", "category": "购物", "subcategory": "购物 · 其他日用", "amount": 214.8, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-033"}, {"date": "2026-11-08", "merchant": "Safeway", "category": "餐饮", "subcategory": "餐饮 · 超市买菜", "amount": 48.27, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-034"}, {"date": "2026-11-08", "merchant": "Walmart", "category": "购物", "subcategory": "购物 · 大型超市", "amount": 16.97, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-035"}, {"date": "2026-11-09", "merchant": "The Home Depot", "category": "居住与家居", "subcategory": "家居 · 五金建材", "amount": -77.18, "type": "退款/冲抵", "source": "Amex同步", "note": "", "id": "AMEX-202611-036"}, {"date": "2026-11-09", "merchant": "The Home Depot", "category": "居住与家居", "subcategory": "家居 · 五金建材", "amount": 23.14, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-037"}, {"date": "2026-11-09", "merchant": "Apple", "category": "娱乐", "subcategory": "娱乐 · 其他", "amount": 9.99, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-038"}, {"date": "2026-11-09", "merchant": "Express Mart", "category": "购物", "subcategory": "购物 · 便利店", "amount": 14.85, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-039"}, {"date": "2026-11-09", "merchant": "Walmart", "category": "购物", "subcategory": "购物 · 大型超市", "amount": -19.83, "type": "退款/冲抵", "source": "Amex同步", "note": "", "id": "AMEX-202611-040"}, {"date": "2026-11-09", "merchant": "T&t Supermark", "category": "餐饮", "subcategory": "餐饮 · 超市买菜", "amount": 182.64, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-041"}, {"date": "2026-11-09", "merchant": "Banfield Pet Hospital", "category": "宠物", "subcategory": "宠物 · 兽医", "amount": 49.62, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-042"}, {"date": "2026-11-10", "merchant": "Puget Sound Energy", "category": "居住与家居", "subcategory": "居住 · 水电燃气", "amount": 238.99, "type": "支出", "source": "Amex同步", "note": "", "id": "AMEX-202611-043"}];
+const SEED = [];
 const CATS = {
 "餐饮":["餐饮 · 超市买菜","餐饮 · 餐厅正餐","餐饮 · 快餐","餐饮 · 咖啡","餐饮 · 其他餐饮"],
 "购物":["购物 · 大型超市","购物 · 百货","购物 · 服饰","购物 · 线上平台","购物 · 便利店","购物 · 折扣店","购物 · 其他日用"],
@@ -235,7 +235,7 @@ function localISODate(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padS
 function fillCats(){ $("fCat").innerHTML=Object.keys(CATS).map(c=>`<option>${c}</option>`).join(""); fillSubs(); }
 function fillSubs(){ const c=$("fCat").value; $("fSub").innerHTML=(CATS[c]||[]).map(s=>`<option>${s}</option>`).join(""); }
 $("fCat").addEventListener("change", fillSubs); fillCats();
-function monthRows(){ const m=$("month").value||"2026-11"; return allRows().filter(r=>String(r.date).slice(0,7)===m); }
+function monthRows(){ const m=$("month").value||localISODate(new Date()).slice(0,7); return allRows().filter(r=>String(r.date).slice(0,7)===m); }
 function render(){
   let list=monthRows();
   const q=($("q").value||"").trim().toLowerCase(), sf=$("srcFilter").value;
@@ -285,7 +285,8 @@ $("btnSave").onclick=()=>{
   let signed=amt;
   if($("fType").value==="退款/冲抵") signed=-Math.abs(amt);
   if($("fType").value==="支出") signed=Math.abs(amt);
-  const id=$("fId").value||("MAN-"+$("fDate").value.replaceAll("-","")+"-"+String(Date.now()).slice(-6));
+  if($("fType").value==="转账") signed=($("fSub").value==="转账 · 转入")?-Math.abs(amt):Math.abs(amt);
+  const id=$("fId").value||("MAN-"+$("fDate").value.replaceAll("-","")+"-"+Date.now()+"-"+Math.floor(Math.random()*10000));
   const rec={date:$("fDate").value,merchant:$("fMerchant").value.trim(),category:$("fCat").value,subcategory:$("fSub").value,amount:signed,type:$("fType").value,source:"手动",note:$("fNote").value.trim(),id};
   const i=manualRows.findIndex(x=>x.id===id);
   if(i>=0) manualRows[i]=rec; else manualRows.push(rec);
@@ -352,6 +353,12 @@ async function pull(){
     const res=await fetch(s.url+"?action=pull&secret="+encodeURIComponent(s.secret||""));
     const data=await res.json();
     if(!data.ok) throw new Error(data.error||"拉取失败");
+    // 空结果保护：桥返回 0 笔但本机有数据时，先保留本机、提示确认（可能是 Sheet 的 tab 被改名或误删）。
+    // 再点一次「从 Sheet 拉取」才会真的用空结果覆盖本机。
+    if((data.amex||[]).length===0 && (data.manual||[]).length===0 && (amexRows.length>0 || manualRows.length>0)){
+      if(!emptyPullArmed){ emptyPullArmed=true; setSyncMsg("拉取返回 0 笔，本机数据已保留（可能是 Sheet 的 tab 被改名或误删，请先检查 Sheet）。确认 Sheet 里确实是空的、想清空本机，再点一次「从 Sheet 拉取」。"); return; }
+    }
+    emptyPullArmed=false;
     amexRows=(data.amex||[]).map(normRow);
     if(isDirty()){
       setSyncMsg(`拉取完成：Amex ${(data.amex||[]).length} 笔已更新；本机有 ${manualRows.length} 笔手动记录还没推送，先推送再覆盖，请点「推送手动到 Sheet」。`);
@@ -378,17 +385,28 @@ async function autoPushManual(prefix){
   const s=getSync();
   if(!s.url){ setSyncMsg("已保存在本机。未配置同步：去「同步设置」填 Apps Script 网址和密钥，填好后点「推送手动到 Sheet」。"); return; }
   if(prefix) setSyncMsg(prefix);
-  const ok=await pushManual();
-  if(ok) setSyncMsg(`已同步到 Sheet（手动 ${manualRows.length} 笔）。Amex 不受影响。`);
+  // 推送排队：连续保存时不让两次推送同时跑，避免互相覆盖。
+  await queuedPush(async ()=>{
+    const ok=await pushManual();
+    if(ok) setSyncMsg(`已同步到 Sheet（手动 ${manualRows.length} 笔）。Amex 不受影响。`);
+  });
 }
+// 推送串行化：所有推送走同一条链，前一个没完后一个等着。
+let pushChain=Promise.resolve();
+function queuedPush(task){ pushChain=pushChain.then(task, task); return pushChain; }
+// 拉取空结果保护的二次确认标记
+let emptyPullArmed=false;
 $("btnPull").onclick=pull;
-$("btnPush").onclick=async ()=>{ setSyncMsg("正在推送手动记录…"); const ok=await pushManual(); if(ok) setSyncMsg(`推送成功：手动 ${manualRows.length} 笔已写入 Sheet 的「手动交易」。Amex 未动。`); };
+$("btnPush").onclick=()=>queuedPush(async ()=>{ setSyncMsg("正在推送手动记录…"); const ok=await pushManual(); if(ok) setSyncMsg(`推送成功：手动 ${manualRows.length} 笔已写入 Sheet 的「手动交易」。Amex 未动。`); });
 $("btnCopyGas").onclick=async ()=>{ try{ await navigator.clipboard.writeText($("gasCode").textContent); $("btnCopyGas").textContent="已复制"; }catch(e){ $("btnCopyGas").textContent="复制失败，请手动全选复制"; } };
 render();
-// 打开 App 时自动拉一次（有配置才拉；失败不影响本机数据）
-(function(){ const s=getSync(); if(s.url) pull(); })();
+// 月份默认当月（不再写死 2026-11）
+$("month").value=localISODate(new Date()).slice(0,7);
+render();
+// 打开 App 时：本机有没推上去的手动账，先补推，再拉取（失败不影响本机数据）
+(async function(){ const s=getSync(); if(!s.url) return; if(isDirty()){ await autoPushManual(); } pull(); })();
 
 </script>
-<p class="muted" style="text-align:center;padding:8px 0 24px">家庭记账 · 版本 v3.2</p>
+<p class="muted" style="text-align:center;padding:8px 0 24px">家庭记账 · 版本 v3.4</p>
 </body>
 </html>
