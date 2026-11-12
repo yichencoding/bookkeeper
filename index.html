@@ -61,6 +61,10 @@ pre{white-space:pre-wrap;word-break:break-all;background:#f8fafc;padding:12px;bo
     <div class="hero-bar"><i id="heroBarFill" style="width:0%"></i></div>
   </div>
   <div class="card">
+    <div class="row" id="chartHead" style="cursor:pointer"><h3 style="margin:0;flex:1">月度对比</h3><span class="muted" id="chartHint" style="flex:0 0 auto">收起 ▾</span></div>
+    <div id="chartBody"><div id="monthChart"></div><p class="muted" style="margin:10px 0 0">点一行跳到那个月</p></div>
+  </div>
+  <div class="card">
     <div class="filters">
       <div><label style="margin-top:0">月份</label><input type="month" id="month"></div>
       <div><label style="margin-top:0">来源</label><select id="srcFilter"><option value="">全部</option><option>Amex同步</option><option>手动</option></select></div>
@@ -269,6 +273,7 @@ function render(){
   const max=Math.max(1,...Object.values(byCat).map(Math.abs));
   const CATCOLORS={"餐饮":"#f59e0b","购物":"#8b5cf6","旅行":"#06b6d4","个人护理与健身":"#ec4899","娱乐":"#f43f5e","宠物":"#f97316","服务与保险":"#64748b","交通":"#0ea5e9","居住与家居":"#22c55e","医疗":"#ef4444","转账":"#94a3b8","银行费用":"#78716c","收入":"#16a34a"};
   $("cats").innerHTML=Object.entries(byCat).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).map(([c,v])=>`<div class="cat"><div class="cat-top"><span class="cat-dot" style="background:${CATCOLORS[c]||"#2563eb"}"></span><span class="cat-name">${c}</span><b class="cat-amt">${money(v)}</b></div><div class="bar"><i style="width:${Math.round(Math.abs(v)/max*100)}%;background:${CATCOLORS[c]||"#2563eb"}"></i></div></div>`).join("")||'<p class="muted">这个月还没有记录</p>';
+  renderChart();
   if(q) list=list.filter(r=>(r.merchant||"").toLowerCase().includes(q));
   if(sf) list=list.filter(r=>r.source===sf);
   list=list.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
@@ -278,6 +283,20 @@ function render(){
     openEdit(el.dataset.id);
   }));
 }
+let chartCollapsed=false;
+function renderChart(){
+  const byMonth={};
+  allRows().forEach(r=>{ const m=String(r.date||"").slice(0,7); if(!m) return; byMonth[m]=byMonth[m]||{net:0,count:0}; byMonth[m].net+=Number(r.amount||0); byMonth[m].count++; });
+  const months=Object.keys(byMonth).sort();
+  const cur=$("month").value||localISODate(new Date()).slice(0,7);
+  const max=Math.max(1,...months.map(m=>Math.abs(byMonth[m].net)));
+  $("monthChart").innerHTML=months.map(m=>{
+    const v=byMonth[m], sel=m===cur;
+    return `<div class="cat" data-m="${m}" style="cursor:pointer"><div class="cat-top"><span class="cat-dot" style="background:${sel?"#1d4ed8":"#2563eb"}"></span><span class="cat-name" style="${sel?"color:#1d4ed8":""}">${m} · ${v.count} 笔</span><b class="cat-amt">${money(v.net)}</b></div><div class="bar"><i style="width:${Math.round(Math.abs(v.net)/max*100)}%;background:${sel?"#1d4ed8":"#2563eb"}"></i></div></div>`;
+  }).join("")||'<p class="muted">还没有记录</p>';
+  document.querySelectorAll("#monthChart .cat").forEach(el=>el.addEventListener("click",()=>{ $("month").value=el.dataset.m; render(); }));
+}
+$("chartHead").onclick=()=>{ chartCollapsed=!chartCollapsed; $("chartBody").classList.toggle("hidden",chartCollapsed); $("chartHint").textContent=chartCollapsed?"展开 ▸":"收起 ▾"; };
 function show(v){ ["view-list","view-form","view-sync"].forEach(id=>$(id).classList.toggle("hidden", id!==v)); $("navList").classList.toggle("on", v==="view-list"); $("navSync").classList.toggle("on", v==="view-sync"); }
 $("navList").onclick=()=>{ show("view-list"); render(); };
 $("navSync").onclick=()=>{ show("view-sync"); };
@@ -438,6 +457,6 @@ try{
 (async function(){ const s=getSync(); if(!s.url) return; if(isDirty()){ await autoPushManual(); } pull(); })();
 
 </script>
-<p class="muted" style="text-align:center;padding:8px 0 24px">家庭记账 · 版本 v3.7</p>
+<p class="muted" style="text-align:center;padding:8px 0 24px">家庭记账 · 版本 v3.8</p>
 </body>
 </html>
