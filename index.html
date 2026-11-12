@@ -105,6 +105,7 @@ pre{white-space:pre-wrap;word-break:break-all;background:#f8fafc;padding:12px;bo
     <div class="row" style="margin-top:12px"><button id="btnSaveSync">保存设置</button><button class="ghost" id="btnPull">从 Sheet 拉取</button><button class="ghost" id="btnPush">推送手动到 Sheet</button></div>
     <p class="muted" id="syncMsg">未配置同步。先按下面 3 步部署（旧版 Code.gs 必须换成 v3.3），再回来填网址。</p>
     <p class="muted">上次同步：<span id="lastSync">从未</span></p>
+    <p class="muted">iOS 小组件读同一个桥，数字和这里一致；点小组件会打开这个月。网址后面加 ?add=1 会直接打开记一笔。</p>
   </div>
   <div class="card">
     <h3 style="margin-top:0">接入指南（3 步，约 10 分钟）</h3>
@@ -403,10 +404,18 @@ render();
 // 月份默认当月（不再写死 2026-11）
 $("month").value=localISODate(new Date()).slice(0,7);
 render();
+// 深链：小组件点进来可直接定位月份或打开记一笔
+// ?month=2026-10 打开指定月份；?add=1 直接打开记一笔
+try{
+  const p=new URLSearchParams(location.search);
+  const m=p.get("month");
+  if(m && /^\d{4}-(0[1-9]|1[0-2])$/.test(m)){ $("month").value=m; render(); }
+  if(p.get("add")==="1"){ openEdit(null); }
+}catch(e){}
 // 打开 App 时：本机有没推上去的手动账，先补推，再拉取（失败不影响本机数据）
 (async function(){ const s=getSync(); if(!s.url) return; if(isDirty()){ await autoPushManual(); } pull(); })();
 
 </script>
-<p class="muted" style="text-align:center;padding:8px 0 24px">家庭记账 · 版本 v3.4</p>
+<p class="muted" style="text-align:center;padding:8px 0 24px">家庭记账 · 版本 v3.5</p>
 </body>
 </html>
