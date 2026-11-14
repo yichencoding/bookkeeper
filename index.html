@@ -71,9 +71,10 @@ pre{white-space:pre-wrap;word-break:break-all;background:#f8fafc;padding:12px;bo
     </div>
     <div class="search"><input id="q" placeholder="搜商家，如 T&amp;T、Banfield"></div>
   </div>
-  <div class="card"><h3>按大类</h3><div id="cats"></div></div>
+  <div class="card"><h3>按大类</h3><div id="cats"></div><p class="muted" style="margin:10px 0 0">点一行只看那个类别，再点一下取消</p></div>
   <div class="card">
     <div class="row"><h3 style="margin:0;flex:1">交易明细</h3><span class="pill">Amex 只读 · 手动可改</span></div>
+    <div id="catFilter" class="hidden" style="margin-top:10px"><span class="pill" id="catFilterPill" style="cursor:pointer"></span></div>
     <p class="muted" id="listMsg"></p>
     <div id="list"></div>
   </div>
@@ -272,11 +273,16 @@ function render(){
   const byCat={}; list.forEach(r=>{ byCat[r.category]=(byCat[r.category]||0)+Number(r.amount||0); });
   const max=Math.max(1,...Object.values(byCat).map(Math.abs));
   const CATCOLORS={"餐饮":"#f59e0b","购物":"#8b5cf6","旅行":"#06b6d4","个人护理与健身":"#ec4899","娱乐":"#f43f5e","宠物":"#f97316","服务与保险":"#64748b","交通":"#0ea5e9","居住与家居":"#22c55e","医疗":"#ef4444","转账":"#94a3b8","银行费用":"#78716c","收入":"#16a34a"};
-  $("cats").innerHTML=Object.entries(byCat).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).map(([c,v])=>`<div class="cat"><div class="cat-top"><span class="cat-dot" style="background:${CATCOLORS[c]||"#2563eb"}"></span><span class="cat-name">${c}</span><b class="cat-amt">${money(v)}</b></div><div class="bar"><i style="width:${Math.round(Math.abs(v)/max*100)}%;background:${CATCOLORS[c]||"#2563eb"}"></i></div></div>`).join("")||'<p class="muted">这个月还没有记录</p>';
+  $("cats").innerHTML=Object.entries(byCat).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).map(([c,v])=>{const sel=c===selCat;return `<div class="cat" data-c="${c}" style="cursor:pointer"><div class="cat-top"><span class="cat-dot" style="background:${CATCOLORS[c]||"#2563eb"}"></span><span class="cat-name" style="${sel?"color:#1d4ed8":""}">${c}</span><b class="cat-amt">${money(v)}</b></div><div class="bar"><i style="width:${Math.round(Math.abs(v)/max*100)}%;background:${CATCOLORS[c]||"#2563eb"}"></i></div></div>`;}).join("")||'<p class="muted">这个月还没有记录</p>';
+  document.querySelectorAll("#cats .cat").forEach(el=>el.addEventListener("click",()=>{ const c=el.dataset.c; selCat=(selCat===c)?"":c; render(); }));
   renderChart();
   if(q) list=list.filter(r=>(r.merchant||"").toLowerCase().includes(q));
   if(sf) list=list.filter(r=>r.source===sf);
+  if(selCat) list=list.filter(r=>r.category===selCat);
   list=list.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const cf=$("catFilter");
+  if(selCat){ cf.classList.remove("hidden"); $("catFilterPill").textContent=`只看「${selCat}」· ${list.length} 笔 ✕`; }
+  else cf.classList.add("hidden");
   $("list").innerHTML=list.map(r=>`<div class="tx" data-id="${r.id}" data-src="${r.source}"><div class="avatar">${(r.merchant||"?").slice(0,1)}</div><div class="tx-main"><div class="tx-name">${r.merchant}<span class="tag">${r.source}</span></div><div class="muted">${r.date} · ${r.category} · ${r.subcategory}${r.note?" · "+r.note:""}</div></div><div class="amt ${Number(r.amount)<0?"neg":""}">${money(r.amount)}</div></div>`).join("")||'<p class="muted">没有符合条件的记录</p>';
   document.querySelectorAll(".tx").forEach(el=>el.addEventListener("click",()=>{
     if(el.dataset.src==="Amex同步"){ $("listMsg").textContent="这笔是 Amex 自动同步来的，只读，不能在 App 里改；要改请在 Sheet 的「Amex交易」里改，或等每日拉取覆盖。"; return; }
@@ -284,6 +290,7 @@ function render(){
   }));
 }
 let chartCollapsed=false;
+let selCat="";
 function renderChart(){
   const byMonth={};
   allRows().forEach(r=>{ const m=String(r.date||"").slice(0,7); if(!m) return; byMonth[m]=byMonth[m]||{net:0,count:0}; byMonth[m].net+=Number(r.amount||0); byMonth[m].count++; });
@@ -297,6 +304,7 @@ function renderChart(){
   document.querySelectorAll("#monthChart .cat").forEach(el=>el.addEventListener("click",()=>{ $("month").value=el.dataset.m; render(); }));
 }
 $("chartHead").onclick=()=>{ chartCollapsed=!chartCollapsed; $("chartBody").classList.toggle("hidden",chartCollapsed); $("chartHint").textContent=chartCollapsed?"展开 ▸":"收起 ▾"; };
+$("catFilterPill").onclick=()=>{ selCat=""; render(); };
 function show(v){ ["view-list","view-form","view-sync"].forEach(id=>$(id).classList.toggle("hidden", id!==v)); $("navList").classList.toggle("on", v==="view-list"); $("navSync").classList.toggle("on", v==="view-sync"); }
 $("navList").onclick=()=>{ show("view-list"); render(); };
 $("navSync").onclick=()=>{ show("view-sync"); };
@@ -457,6 +465,6 @@ try{
 (async function(){ const s=getSync(); if(!s.url) return; if(isDirty()){ await autoPushManual(); } pull(); })();
 
 </script>
-<p class="muted" style="text-align:center;padding:8px 0 24px">家庭记账 · 版本 v3.8</p>
+<p class="muted" style="text-align:center;padding:8px 0 24px">家庭记账 · 版本 v3.9</p>
 </body>
 </html>
