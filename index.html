@@ -264,12 +264,16 @@ function render(){
   $("heroMonth").textContent=m;
   $("hdrMonth").textContent="· "+parseInt(m.slice(5),10)+"月";
   const budget=getBudget();
-  const left=budget-net, pct=budget>0?Math.round(Math.min(100,Math.max(0,net/budget*100))):0;
+  const left=budget-net, over=net>budget;
+  const pctReal=budget>0?Math.round(Math.max(0,net/budget*100)):0;
+  const pctBar=Math.min(100,pctReal);
   $("heroBudget").textContent=money(budget);
   $("heroLeft").textContent=money(left);
-  $("heroLeft").style.color=left<0?"#fca5a5":"";
-  $("heroPct").textContent="已用 "+pct+"%";
-  $("heroBarFill").style.width=pct+"%";
+  $("heroLeft").style.color=left<0?"#fecaca":"";
+  $("heroPct").textContent="已用 "+pctReal+"%";
+  const hbf=$("heroBarFill");
+  hbf.style.width=pctBar+"%";
+  hbf.style.background=over?"#ef4444":"";
   const byCat={}; list.forEach(r=>{ byCat[r.category]=(byCat[r.category]||0)+Number(r.amount||0); });
   const max=Math.max(1,...Object.values(byCat).map(Math.abs));
   const CATCOLORS={"餐饮":"#f59e0b","购物":"#8b5cf6","旅行":"#06b6d4","个人护理与健身":"#ec4899","娱乐":"#f43f5e","宠物":"#f97316","服务与保险":"#64748b","交通":"#0ea5e9","居住与家居":"#22c55e","医疗":"#ef4444","转账":"#94a3b8","银行费用":"#78716c","收入":"#16a34a"};
@@ -296,10 +300,18 @@ function renderChart(){
   allRows().forEach(r=>{ const m=String(r.date||"").slice(0,7); if(!m) return; byMonth[m]=byMonth[m]||{net:0,count:0}; byMonth[m].net+=Number(r.amount||0); byMonth[m].count++; });
   const months=Object.keys(byMonth).sort();
   const cur=$("month").value||localISODate(new Date()).slice(0,7);
-  const max=Math.max(1,...months.map(m=>Math.abs(byMonth[m].net)));
+  const budget=getBudget();
+  const maxMonth=Math.max(1,...months.map(m=>Math.abs(byMonth[m].net)));
+  const scale=Math.max(budget,maxMonth);
+  const bPos=Math.round(budget/scale*100);
   $("monthChart").innerHTML=months.map(m=>{
     const v=byMonth[m], sel=m===cur;
-    return `<div class="cat" data-m="${m}" style="cursor:pointer"><div class="cat-top"><span class="cat-dot" style="background:${sel?"#1d4ed8":"#2563eb"}"></span><span class="cat-name" style="${sel?"color:#1d4ed8":""}">${m} · ${v.count} 笔</span><b class="cat-amt">${money(v.net)}</b></div><div class="bar"><i style="width:${Math.round(Math.abs(v.net)/max*100)}%;background:${sel?"#1d4ed8":"#2563eb"}"></i></div></div>`;
+    const over=v.net>budget;
+    const blueW=Math.round(Math.min(Math.abs(v.net),budget)/scale*100);
+    const redW=over?Math.round((v.net-budget)/scale*100):0;
+    const base=sel?"#1d4ed8":"#2563eb";
+    const overTxt=over?` <span style="font-size:12px;font-weight:400">超 ${money(v.net-budget)}</span>`:"";
+    return `<div class="cat" data-m="${m}" style="cursor:pointer"><div class="cat-top"><span class="cat-dot" style="background:${base}"></span><span class="cat-name" style="${sel?"color:#1d4ed8":""}">${m} · ${v.count} 笔</span><b class="cat-amt" style="${over?"color:#dc2626":""}">${money(v.net)}${overTxt}</b></div><div style="position:relative;padding:3px 0"><div class="bar" style="display:flex"><i style="flex:none;width:${blueW}%;background:${base};border-radius:0"></i>${redW?`<i style="flex:none;width:${redW}%;background:#ef4444;border-radius:0"></i>`:""}</div><i style="position:absolute;left:${bPos}%;margin-left:-1px;top:0;bottom:0;width:2px;background:#64748b"></i></div></div>`;
   }).join("")||'<p class="muted">还没有记录</p>';
   document.querySelectorAll("#monthChart .cat").forEach(el=>el.addEventListener("click",()=>{ $("month").value=el.dataset.m; render(); }));
 }
@@ -465,6 +477,6 @@ try{
 (async function(){ const s=getSync(); if(!s.url) return; if(isDirty()){ await autoPushManual(); } pull(); })();
 
 </script>
-<p class="muted" style="text-align:center;padding:8px 0 24px">家庭记账 · 版本 v3.9</p>
+<p class="muted" style="text-align:center;padding:8px 0 24px">家庭记账 · 版本 v4.0</p>
 </body>
 </html>
