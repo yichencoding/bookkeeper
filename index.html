@@ -71,7 +71,7 @@ pre{white-space:pre-wrap;word-break:break-all;background:#f8fafc;padding:12px;bo
     </div>
     <div class="search"><input id="q" placeholder="搜商家，如 T&amp;T、Banfield"></div>
   </div>
-  <div class="card"><h3>按大类</h3><div id="cats"></div><p class="muted" style="margin:10px 0 0">点一行只看那个类别，再点一下取消</p></div>
+  <div class="card"><div class="row" id="catsHead" style="cursor:pointer"><h3 style="margin:0;flex:1">按大类</h3><span class="muted" id="catsHint" style="flex:0 0 auto">收起 ▾</span></div><div id="catsBody"><div id="cats"></div><p class="muted" style="margin:10px 0 0">点一行只看那个类别，再点一下取消</p></div></div>
   <div class="card">
     <div class="row"><h3 style="margin:0;flex:1">交易明细</h3><span class="pill">Amex 只读 · 手动可改</span></div>
     <div id="catFilter" class="hidden" style="margin-top:10px"><span class="pill" id="catFilterPill" style="cursor:pointer"></span></div>
@@ -322,6 +322,11 @@ function renderChart(){
   document.querySelectorAll("#monthChart .cat").forEach(el=>el.addEventListener("click",()=>{ $("month").value=el.dataset.m; render(); }));
 }
 $("chartHead").onclick=()=>{ chartCollapsed=!chartCollapsed; $("chartBody").classList.toggle("hidden",chartCollapsed); $("chartHint").textContent=chartCollapsed?"展开 ▸":"收起 ▾"; };
+let catsCollapsed=false;
+try{ catsCollapsed=localStorage.getItem("family-bookkeeping-cats-collapsed")==="1"; }catch(e){}
+function applyCatsCollapsed(){ $("catsBody").classList.toggle("hidden",catsCollapsed); $("catsHint").textContent=catsCollapsed?"展开 ▸":"收起 ▾"; }
+$("catsHead").onclick=()=>{ catsCollapsed=!catsCollapsed; try{ localStorage.setItem("family-bookkeeping-cats-collapsed",catsCollapsed?"1":"0"); }catch(e){} applyCatsCollapsed(); };
+applyCatsCollapsed();
 $("catFilterPill").onclick=()=>{ selCat=""; render(); };
 function show(v){ ["view-list","view-form","view-sync"].forEach(id=>$(id).classList.toggle("hidden", id!==v)); $("navList").classList.toggle("on", v==="view-list"); $("navSync").classList.toggle("on", v==="view-sync"); }
 $("navList").onclick=()=>{ show("view-list"); render(); };
@@ -483,6 +488,6 @@ try{
 (async function(){ const s=getSync(); if(!s.url) return; if(isDirty()){ await autoPushManual(); } pull(); })();
 
 </script>
-<p class="muted" style="text-align:center;padding:8px 0 24px">家庭记账 · 版本 v4.2</p>
+<p class="muted" style="text-align:center;padding:8px 0 24px">家庭记账 · 版本 v4.3</p>
 </body>
 </html>
