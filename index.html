@@ -354,12 +354,14 @@ function renderTrend(){
     const pct=Math.round(Math.abs(w.sum)/maxW*100);
     return `<div class="cat"><div class="cat-top"><span class="cat-dot" style="background:#2563eb"></span><span class="cat-name">${mo}/${w.s}–${w.e} · ${w.cnt} 笔</span><b class="cat-amt">${money(w.sum)}</b></div><div class="bar"><i style="width:${pct}%;background:#2563eb"></i></div></div>`;
   }).join("");
-  // 累计曲线：每天结束时的累计净支出
+  // 累计曲线：每天结束时的累计净支出，只画到今天——超过今天的日子还没发生，画平线会造成“很平稳”的错觉
+  const now=new Date();
+  const isCurMonth=(y===now.getFullYear()&&mo===now.getMonth()+1);
+  const endDay=isCurMonth?Math.min(now.getDate(),dim):dim;
   const daily={};
   list.forEach(r=>{ const d=Number(String(r.date).slice(8,10)); daily[d]=(daily[d]||0)+Number(r.amount||0); });
   let cum=0; const cumPts=[];
-  for(let d=1;d<=dim;d++){ cum+=daily[d]||0; cumPts.push(cum); }
-  const lastDay=Math.max(1,...list.map(r=>Number(String(r.date).slice(8,10))));
+  for(let d=1;d<=endDay;d++){ cum+=daily[d]||0; cumPts.push(cum); }
   const maxCum=Math.max(0,...cumPts);
   const scale=Math.max(budget,maxCum,1);
   const W=320,H=150,X0=10,X1=310,Y0=12,Y1=138;
@@ -367,9 +369,9 @@ function renderTrend(){
   const yv=v=>Y1-(v/scale)*(Y1-Y0);
   const pts=cumPts.map((v,i)=>`${x(i+1).toFixed(1)},${yv(v).toFixed(1)}`).join(" ");
   const yB=yv(budget);
-  const lx=x(lastDay), ly=yv(cumPts[lastDay-1]);
-  $("trendCum").innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="累计支出曲线"><polygon points="${X0},${Y1} ${pts} ${X1},${Y1}" fill="#dc2626" opacity="0.08"/><line x1="${X0}" y1="${yB.toFixed(1)}" x2="${X1}" y2="${yB.toFixed(1)}" stroke="#64748b" stroke-width="1.5" stroke-dasharray="5 4"/><polyline points="${pts}" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="4" fill="#dc2626"/><text x="${X1}" y="${(yB-5).toFixed(1)}" text-anchor="end" font-size="11" fill="#64748b">预算 ${money(budget)}</text></svg>`;
-  $("trendNote").textContent=`累计 ${money(cumPts[lastDay-1])}（截至 ${mo}/${lastDay}）· 预算 ${money(budget)} · 还剩 ${money(budget-cumPts[lastDay-1])}`;
+  const lx=x(endDay), ly=yv(cumPts[endDay-1]);
+  $("trendCum").innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="累计支出曲线"><polygon points="${X0},${Y1} ${pts} ${lx.toFixed(1)},${Y1}" fill="#dc2626" opacity="0.08"/><line x1="${X0}" y1="${yB.toFixed(1)}" x2="${X1}" y2="${yB.toFixed(1)}" stroke="#64748b" stroke-width="1.5" stroke-dasharray="5 4"/><polyline points="${pts}" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="4" fill="#dc2626"/><text x="${X1}" y="${(yB-5).toFixed(1)}" text-anchor="end" font-size="11" fill="#64748b">预算 ${money(budget)}</text></svg>`;
+  $("trendNote").textContent=`累计 ${money(cumPts[endDay-1])}（截至 ${mo}/${endDay}）· 预算 ${money(budget)} · 还剩 ${money(budget-cumPts[endDay-1])}`;
 }
 $("chartHead").onclick=()=>{ chartCollapsed=!chartCollapsed; $("chartBody").classList.toggle("hidden",chartCollapsed); $("chartHint").textContent=chartCollapsed?"展开 ▸":"收起 ▾"; };
 let catsCollapsed=false;
