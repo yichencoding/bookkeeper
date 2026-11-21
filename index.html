@@ -61,6 +61,14 @@ pre{white-space:pre-wrap;word-break:break-all;background:#f8fafc;padding:12px;bo
     <div class="hero-bar"><i id="heroBarFill" style="width:0%"></i></div>
   </div>
   <div class="card">
+    <div class="row" id="trendHead" style="cursor:pointer"><h3 style="margin:0;flex:1">本月趋势</h3><span class="muted" id="trendHint" style="flex:0 0 auto">收起 ▾</span></div>
+    <div id="trendBody">
+      <div id="trendWeeks"></div>
+      <div id="trendCum" style="margin-top:14px"></div>
+      <p class="muted" id="trendNote" style="margin:10px 0 0"></p>
+    </div>
+  </div>
+  <div class="card">
     <div class="row" id="chartHead" style="cursor:pointer"><h3 style="margin:0;flex:1">月度对比</h3><span class="muted" id="chartHint" style="flex:0 0 auto">收起 ▾</span></div>
     <div id="chartBody"><div id="monthChart"></div><p class="muted" style="margin:10px 0 0">点一行跳到那个月</p></div>
   </div>
@@ -281,6 +289,7 @@ function render(){
   $("cats").innerHTML=Object.entries(byCat).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).map(([c,v])=>{const sel=c===selCat;return `<div class="cat" data-c="${c}" style="cursor:pointer"><div class="cat-top"><span class="cat-dot" style="background:${CATCOLORS[c]||"#2563eb"}"></span><span class="cat-name" style="${sel?"color:#1d4ed8":""}">${c}</span><b class="cat-amt">${money(v)}</b><span style="color:#cbd5e1;font-size:18px;line-height:1">›</span></div><div class="bar"><i style="width:${Math.round(Math.abs(v)/max*100)}%;background:${CATCOLORS[c]||"#2563eb"}"></i></div></div>`;}).join("")||'<p class="muted">这个月还没有记录</p>';
   document.querySelectorAll("#cats .cat").forEach(el=>el.addEventListener("click",()=>{ const c=el.dataset.c; selCat=(selCat===c)?"":c; render(); }));
   renderChart();
+  renderTrend();
   if(q) list=list.filter(r=>(r.merchant||"").toLowerCase().includes(q));
   if(sf) list=list.filter(r=>r.source===sf);
   if(selCat) list=list.filter(r=>r.category===selCat);
@@ -321,12 +330,58 @@ function renderChart(){
   }).join("")||'<p class="muted">还没有记录</p>';
   document.querySelectorAll("#monthChart .cat").forEach(el=>el.addEventListener("click",()=>{ $("month").value=el.dataset.m; render(); }));
 }
+function renderTrend(){
+  const m=$("month").value||localISODate(new Date()).slice(0,7);
+  const list=monthRows();
+  const [y,mo]=m.split("-").map(Number);
+  const dim=new Date(y,mo,0).getDate();
+  const budget=getBudget();
+  if(!list.length){
+    $("trendWeeks").innerHTML='<p class="muted">这个月还没有记录</p>';
+    $("trendCum").innerHTML=""; $("trendNote").textContent="";
+    return;
+  }
+  // 按周：1-7、8-14、15-21、22-28、29-月底
+  const weeks=[];
+  for(let s=1;s<=dim;s+=7) weeks.push({s,e:Math.min(s+6,dim)});
+  const wdata=weeks.map(w=>{
+    let sum=0,cnt=0;
+    list.forEach(r=>{ const d=Number(String(r.date).slice(8,10)); if(d>=w.s&&d<=w.e){ sum+=Number(r.amount||0); cnt++; } });
+    return {s:w.s,e:w.e,sum,cnt};
+  });
+  const maxW=Math.max(1,...wdata.map(w=>Math.abs(w.sum)));
+  $("trendWeeks").innerHTML=wdata.map(w=>{
+    const pct=Math.round(Math.abs(w.sum)/maxW*100);
+    return `<div class="cat"><div class="cat-top"><span class="cat-dot" style="background:#2563eb"></span><span class="cat-name">${mo}/${w.s}–${w.e} · ${w.cnt} 笔</span><b class="cat-amt">${money(w.sum)}</b></div><div class="bar"><i style="width:${pct}%;background:#2563eb"></i></div></div>`;
+  }).join("");
+  // 累计曲线：每天结束时的累计净支出
+  const daily={};
+  list.forEach(r=>{ const d=Number(String(r.date).slice(8,10)); daily[d]=(daily[d]||0)+Number(r.amount||0); });
+  let cum=0; const cumPts=[];
+  for(let d=1;d<=dim;d++){ cum+=daily[d]||0; cumPts.push(cum); }
+  const lastDay=Math.max(1,...list.map(r=>Number(String(r.date).slice(8,10))));
+  const maxCum=Math.max(0,...cumPts);
+  const scale=Math.max(budget,maxCum,1);
+  const W=320,H=150,X0=10,X1=310,Y0=12,Y1=138;
+  const x=d=>dim>1?X0+(d-1)/(dim-1)*(X1-X0):X0;
+  const yv=v=>Y1-(v/scale)*(Y1-Y0);
+  const pts=cumPts.map((v,i)=>`${x(i+1).toFixed(1)},${yv(v).toFixed(1)}`).join(" ");
+  const yB=yv(budget);
+  const lx=x(lastDay), ly=yv(cumPts[lastDay-1]);
+  $("trendCum").innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="累计支出曲线"><polygon points="${X0},${Y1} ${pts} ${X1},${Y1}" fill="#dc2626" opacity="0.08"/><line x1="${X0}" y1="${yB.toFixed(1)}" x2="${X1}" y2="${yB.toFixed(1)}" stroke="#64748b" stroke-width="1.5" stroke-dasharray="5 4"/><polyline points="${pts}" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="4" fill="#dc2626"/><text x="${X1}" y="${(yB-5).toFixed(1)}" text-anchor="end" font-size="11" fill="#64748b">预算 ${money(budget)}</text></svg>`;
+  $("trendNote").textContent=`累计 ${money(cumPts[lastDay-1])}（截至 ${mo}/${lastDay}）· 预算 ${money(budget)} · 还剩 ${money(budget-cumPts[lastDay-1])}`;
+}
 $("chartHead").onclick=()=>{ chartCollapsed=!chartCollapsed; $("chartBody").classList.toggle("hidden",chartCollapsed); $("chartHint").textContent=chartCollapsed?"展开 ▸":"收起 ▾"; };
 let catsCollapsed=false;
 try{ catsCollapsed=localStorage.getItem("family-bookkeeping-cats-collapsed")==="1"; }catch(e){}
 function applyCatsCollapsed(){ $("catsBody").classList.toggle("hidden",catsCollapsed); $("catsHint").textContent=catsCollapsed?"展开 ▸":"收起 ▾"; }
 $("catsHead").onclick=()=>{ catsCollapsed=!catsCollapsed; try{ localStorage.setItem("family-bookkeeping-cats-collapsed",catsCollapsed?"1":"0"); }catch(e){} applyCatsCollapsed(); };
 applyCatsCollapsed();
+let trendCollapsed=false;
+try{ trendCollapsed=localStorage.getItem("family-bookkeeping-trend-collapsed")==="1"; }catch(e){}
+function applyTrendCollapsed(){ $("trendBody").classList.toggle("hidden",trendCollapsed); $("trendHint").textContent=trendCollapsed?"展开 ▸":"收起 ▾"; }
+$("trendHead").onclick=()=>{ trendCollapsed=!trendCollapsed; try{ localStorage.setItem("family-bookkeeping-trend-collapsed",trendCollapsed?"1":"0"); }catch(e){} applyTrendCollapsed(); };
+applyTrendCollapsed();
 $("catFilterPill").onclick=()=>{ selCat=""; render(); };
 function show(v){ ["view-list","view-form","view-sync"].forEach(id=>$(id).classList.toggle("hidden", id!==v)); $("navList").classList.toggle("on", v==="view-list"); $("navSync").classList.toggle("on", v==="view-sync"); }
 $("navList").onclick=()=>{ show("view-list"); render(); };
@@ -488,6 +543,6 @@ try{
 (async function(){ const s=getSync(); if(!s.url) return; if(isDirty()){ await autoPushManual(); } pull(); })();
 
 </script>
-<p class="muted" style="text-align:center;padding:8px 0 24px">家庭记账 · 版本 v4.3</p>
+<p class="muted" style="text-align:center;padding:8px 0 24px">家庭记账 · 版本 v4.4</p>
 </body>
 </html>
